@@ -1,0 +1,464 @@
+:root {
+    --gap-size: 1vmin;
+    --cell-size: 8vmin;
+    --grid-gap: 1vmin;
+
+    --color-red: #ff4d4d;
+    --color-blue: #4da6ff;
+    --color-green: #4dff4d;
+    --color-purple: #b366ff;
+    --color-white: #f0f0f0;
+    --color-orange: #ffa500;
+    --color-yellow: #ffd700;
+}
+
+body {
+    background-color: #222;
+    color: white;
+    font-family: sans-serif;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90vmin;
+    height: 95vmin;
+}
+
+#ui-header {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 2vmin;
+}
+
+#ui-top-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 3vmin;
+    margin-bottom: 1vmin;
+}
+
+#target-panel {
+    display: flex;
+    justify-content: center;
+    gap: 2vmin;
+    background: rgba(255,255,255,0.1);
+    padding: 1vmin;
+    border-radius: 1vmin;
+}
+
+.target-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5vmin;
+    font-size: 2vmin;
+}
+
+.target-icon {
+    width: 3vmin;
+    height: 3vmin;
+    border-radius: 0.5vmin;
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+#grid-container {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    gap: var(--grid-gap);
+    width: 80vmin;
+    height: 80vmin;
+    background: rgba(0,0,0,0.5);
+    padding: var(--grid-gap);
+    border-radius: 1vmin;
+    position: relative; /* For VFX container */
+}
+
+.cell {
+    width: 100%;
+    height: 100%;
+    border-radius: 15%;
+    position: relative;
+    cursor: pointer;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+    z-index: 10;
+    transition: transform 0.25s ease-in-out;
+}
+
+.cell-placeholder {
+    width: 100%; height: 100%;
+    background: rgba(255,255,255,0.05);
+    border-radius: 15%;
+}
+
+.cell.selected {
+    filter: brightness(1.3);
+    box-shadow: 0 0 10px white, inset 0 0 5px rgba(0,0,0,0.5);
+    z-index: 20;
+    transform: scale(1.1);
+}
+
+/* Colors */
+.color-red { background-color: var(--color-red); border: 2px solid #cc0000; }
+.color-blue { background-color: var(--color-blue); border: 2px solid #0066cc; }
+.color-green { background-color: var(--color-green); border: 2px solid #00cc00; }
+.color-purple { background-color: var(--color-purple); border: 2px solid #800080; }
+.color-white { background-color: var(--color-white); border: 2px solid #cccccc; }
+/* Orange and Yellow are handled in existing CSS or appended */
+.color-orange { background-color: var(--color-orange); border: 3px solid #ffd700; }
+.color-yellow { background-color: var(--color-yellow); border: 2px solid #b8860b; }
+
+/* States */
+.state-frozen {
+    position: relative;
+}
+.state-frozen::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(200, 240, 255, 0.6);
+    border: 2px solid white;
+    border-radius: 15%;
+    z-index: 15;
+}
+
+.state-bright-blue {
+    box-shadow: 0 0 15px cyan;
+    border-color: white;
+    animation: pulse-blue 1s infinite alternate;
+}
+.state-bright-purple {
+    box-shadow: 0 0 15px magenta;
+    border-color: white;
+    animation: pulse-purple 1s infinite alternate;
+}
+@keyframes pulse-blue { from { box-shadow: 0 0 5px cyan; } to { box-shadow: 0 0 20px cyan; } }
+@keyframes pulse-purple { from { box-shadow: 0 0 5px magenta; } to { box-shadow: 0 0 20px magenta; } }
+
+.corrode {
+    filter: sepia(1) hue-rotate(-50deg) saturate(3);
+    transition: filter 0.5s;
+}
+.energy-charge {
+    filter: brightness(1.5) drop-shadow(0 0 5px #0f0);
+    transition: filter 0.4s;
+}
+
+/* Animations */
+.shake {
+    animation: shake 0.4s ease-in-out;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px) rotate(-5deg); }
+    75% { transform: translateX(5px) rotate(5deg); }
+}
+
+.matched {
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+@keyframes popDisappear {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+#message-area {
+    margin-top: 2vmin;
+    font-size: 2.5vmin;
+    text-align: center;
+    height: 4vmin;
+}
+
+#restart-btn {
+    margin-top: 2vmin;
+    padding: 1vmin 3vmin;
+    font-size: 3vmin;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 1vmin;
+    cursor: pointer;
+}
+
+/* VFX */
+.vfx-container {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 50;
+    overflow: hidden;
+}
+
+.shockwave {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 10vmin; height: 10vmin;
+    border: 2px solid white;
+    border-radius: 50%;
+    animation: expandFade 0.5s ease-out forwards;
+}
+@keyframes expandFade {
+    to { width: 30vmin; height: 30vmin; opacity: 0; }
+}
+
+/* Generic Particle */
+.debris, .ice-shard, .bubble, .crush-particle {
+    position: absolute;
+    width: 1vmin; height: 1vmin;
+    background: white;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle-fly 1s ease-out forwards;
+}
+.ice-shard { background: cyan; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+.bubble { background: rgba(255,255,255,0.5); border: 1px solid white; animation: bubble-rise 1s ease-in forwards; }
+.crush-particle { background: var(--p-color, white); }
+
+@keyframes particle-fly {
+    to { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+}
+@keyframes bubble-rise {
+    to { transform: translateY(-10vmin); opacity: 0; }
+}
+
+.biohazard-flash {
+    position: fixed; top:0; left:0; width:100vw; height:100vh;
+    background: radial-gradient(circle, transparent 50%, rgba(255,165,0,0.5) 100%);
+    z-index: 200;
+    pointer-events: none;
+    animation: flashFade 1s forwards;
+}
+.holy-flash {
+    position: fixed; top:0; left:0; width:100vw; height:100vh;
+    background: white;
+    z-index: 200;
+    pointer-events: none;
+    animation: flashFade 0.5s forwards;
+}
+@keyframes flashFade { from { opacity: 1; } to { opacity: 0; } }
+
+.void-vortex {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 20vmin; height: 20vmin;
+    background: radial-gradient(circle, #000 30%, #4b0082 70%, transparent 100%);
+    box-shadow: 0 0 20px 5px #4b0082;
+    border-radius: 50%;
+    animation: vortex-implode 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    z-index: 60;
+    opacity: 0.9;
+}
+
+@keyframes vortex-implode {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.2) rotate(180deg); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1) rotate(720deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0) rotate(1080deg); opacity: 0; }
+}
+
+.wind-slash {
+    position: absolute;
+    transform: translate(-50%, -50%) rotate(var(--angle, 0deg));
+    width: 30vmin; height: 2vmin;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 10px white;
+    animation: slash 0.3s ease-out forwards;
+}
+@keyframes slash { from { width: 0; opacity: 1; } to { width: 30vmin; opacity: 0; } }
+
+.hydro-beam {
+    position: absolute;
+    background: linear-gradient(90deg, rgba(0,255,255,0) 0%, rgba(0,255,255,0.8) 50%, rgba(0,255,255,0) 100%);
+    box-shadow: 0 0 15px cyan;
+    z-index: 100;
+    animation: laser-flash 0.5s ease-out forwards;
+}
+.hydro-beam.vertical {
+    background: linear-gradient(0deg, rgba(0,255,255,0) 0%, rgba(0,255,255,0.8) 50%, rgba(0,255,255,0) 100%);
+}
+
+@keyframes laser-flash {
+    0% { opacity: 0; transform: scale(0.5); }
+    10% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1); }
+}
+
+/* Yellow Voltage System Overrides */
+
+/* Base Yellow - clean slate */
+.color-yellow {
+    transition: background-color 0.3s, box-shadow 0.3s, transform 0.2s;
+    position: relative;
+    overflow: visible; /* For lightning arcs sticking out */
+}
+
+/* Level 1: Dim / Unstable Low */
+.voltage-1 {
+    background: radial-gradient(circle, #d4a017 30%, #8b6914 100%);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    border: 2px solid #b8860b;
+}
+.voltage-1::after {
+    content: '⚡';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    font-size: 3vmin;
+    color: rgba(255, 255, 255, 0.5);
+    opacity: 0.7;
+}
+
+/* Level 2: Normal / Charged */
+.voltage-2 {
+    background: radial-gradient(circle, #ffd700 30%, #daa520 100%);
+    box-shadow: 0 0 5px #ffd700;
+    border: 2px solid #ffd700;
+    animation: pulse-yellow 2s infinite;
+}
+.voltage-2::after {
+    content: '⚡⚡';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4vmin;
+    color: white;
+    filter: drop-shadow(0 0 2px gold);
+    letter-spacing: -0.5vmin;
+}
+
+/* Level 3: Dark / Cool / Overloaded */
+.voltage-3 {
+    background: radial-gradient(circle, #b8860b 20%, #8b6914 100%); /* Darker Gold */
+    box-shadow: 0 0 10px 2px #ffD700, inset 0 0 15px black;
+    border: 2px solid #ffe4b5;
+    animation: electric-shake 0.1s infinite, glow-pulse 1s infinite alternate;
+    z-index: 5;
+}
+.voltage-3::after {
+    content: '';
+    position: absolute;
+    top: -10%; left: -10%; right: -10%; bottom: -10%;
+    background: transparent;
+    border-radius: 50%;
+    box-shadow: 0 0 8px 1px #ff4500; /* Darker Orange/Red Arc */
+    opacity: 0;
+    animation: arc-flash 1.5s infinite;
+}
+.voltage-3::before {
+    content: '⚡⚡⚡';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3vmin;
+    color: #ffeb3b; /* Bright Yellow Text */
+    text-shadow: 0 0 5px #000;
+    z-index: 2;
+}
+
+@keyframes pulse-yellow {
+    0% { box-shadow: 0 0 5px #ffd700; }
+    50% { box-shadow: 0 0 15px #ffd700; }
+    100% { box-shadow: 0 0 5px #ffd700; }
+}
+
+@keyframes electric-shake {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(-1px, 1px) rotate(-1deg); }
+    50% { transform: translate(1px, -1px) rotate(1deg); }
+    75% { transform: translate(-1px, -1px) rotate(0deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes glow-pulse {
+    from { filter: brightness(1); }
+    to { filter: brightness(1.2); }
+}
+
+@keyframes arc-flash {
+    0% { opacity: 0; clip-path: polygon(50% 50%, 0 0, 100% 0); }
+    10% { opacity: 1; clip-path: polygon(50% 50%, 0 0, 100% 0); }
+    11% { opacity: 0; }
+    50% { opacity: 0; clip-path: polygon(50% 50%, 100% 100%, 0 100%); }
+    60% { opacity: 1; clip-path: polygon(50% 50%, 100% 100%, 0 100%); }
+    61% { opacity: 0; }
+    100% { opacity: 0; }
+}
+
+/* Fusion Core */
+.type-fusion-core {
+    background: repeating-conic-gradient(
+        #333 0% 25%,
+        #ff8c00 25% 50%
+    );
+    border: 3px solid #000;
+    box-shadow: 0 0 10px #ff4500;
+    animation: core-spin-slow 4s linear infinite;
+    position: relative;
+}
+.type-fusion-core::after {
+    content: '☢';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 5vmin;
+    color: #00ff00; /* Toxic Green Core */
+    text-shadow: 0 0 5px #000;
+    animation: core-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes core-spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@keyframes core-pulse {
+    from { text-shadow: 0 0 5px #00ff00; transform: translate(-50%, -50%) scale(1); }
+    to { text-shadow: 0 0 20px #00ff00; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+/* Ball Lightning (Ghost Unit) */
+.ball-lightning-ghost {
+    position: absolute;
+    width: 8vmin; height: 8vmin;
+    background: radial-gradient(circle, #ffffff, #00ffff, transparent);
+    border-radius: 50%;
+    box-shadow: 0 0 20px #00ffff;
+    z-index: 100; /* Floating above board */
+    pointer-events: none;
+    mix-blend-mode: screen;
+    animation: ghost-float 0.5s ease-in-out infinite alternate;
+    transition: top 0.3s linear, left 0.3s linear;
+}
+
+@keyframes ghost-float {
+    from { transform: scale(1); opacity: 0.8; }
+    to { transform: scale(1.1); opacity: 1; }
+}
+
+/* Orange override if needed, but we have it above */
+
+/* Gold Color */
+.color-gold {
+    background: radial-gradient(circle, #ffd700 40%, #daa520 100%);
+    border: 3px solid #fff;
+    box-shadow: 0 0 10px #ffd700;
+}
+.type-gold {
+    /* Make it look special */
+    animation: gold-shine 2s infinite linear;
+}
+@keyframes gold-shine {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+    100% { filter: brightness(1); }
+}

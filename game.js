@@ -3349,12 +3349,6 @@ function initGame() {
   // Ensure levels are loaded
   const levels =
     Array.isArray(window.LEVELS) && window.LEVELS.length ? window.LEVELS : [];
-  // find first unlocked level or fallback to first
-  let startId = 1;
-  if (levels.length) {
-    const found = levels.find((x) => x.unlocked) || levels[0];
-    startId = found.id || levels[0].id || 1;
-  }
   // Render menu UI
   try {
     renderLevelMenu();
@@ -3362,8 +3356,8 @@ function initGame() {
     console.warn("renderLevelMenu failed during init", e);
   }
 
-  // Start the level
-  startLevel(startId);
+  // Show level selection menu instead of starting a level directly
+  showMenu();
 }
 
 // levels 加载已在顶部 DOMContentLoaded 回调中处理（避免重复调用）
@@ -4168,6 +4162,85 @@ function openLevelEditor() {
     URL.revokeObjectURL(url);
   });
 
+  // Upload to server button
+  const uploadBtn = document.createElement("button");
+  uploadBtn.textContent = "上传到服务器";
+  uploadBtn.type = "button";
+  uploadBtn.className = "editor-button";
+  uploadBtn.style.backgroundColor = "#2a5";
+  uploadBtn.disabled = false;
+
+  // API endpoint configuration (用户可以在设置中配置)
+  let API_ENDPOINT = localStorage.getItem("level_editor_api_endpoint") || "";
+
+  uploadBtn.addEventListener("click", async () => {
+    if (!API_ENDPOINT) {
+      const endpoint = prompt(
+        "请输入 API 端点地址（例如：https://your-project.vercel.app/api/levels）\n" +
+          "留空则跳过上传："
+      );
+      if (!endpoint) return;
+      API_ENDPOINT = endpoint.trim();
+      localStorage.setItem("level_editor_api_endpoint", API_ENDPOINT);
+    }
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "上传中...";
+
+    try {
+      const response = await fetch(API_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          levels: window.LEVELS,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`✅ 上传成功！已保存 ${window.LEVELS.length} 个关卡。`);
+      } else {
+        throw new Error(result.error || "上传失败");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(
+        `❌ 上传失败：${error.message}\n\n请检查：\n1. API 端点地址是否正确\n2. 网络连接是否正常\n3. 服务器是否正常运行`
+      );
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = "上传到服务器";
+    }
+  });
+
+  // API endpoint configuration button
+  const configApiBtn = document.createElement("button");
+  configApiBtn.textContent = "配置 API";
+  configApiBtn.type = "button";
+  configApiBtn.className = "editor-button";
+  configApiBtn.style.fontSize = "11px";
+  configApiBtn.addEventListener("click", () => {
+    const current = API_ENDPOINT || "未设置";
+    const newEndpoint = prompt(
+      `当前 API 端点：${current}\n\n请输入新的 API 端点地址：\n（留空则清除配置）`,
+      API_ENDPOINT
+    );
+    if (newEndpoint !== null) {
+      if (newEndpoint.trim()) {
+        API_ENDPOINT = newEndpoint.trim();
+        localStorage.setItem("level_editor_api_endpoint", API_ENDPOINT);
+        alert("API 端点已更新！");
+      } else {
+        API_ENDPOINT = "";
+        localStorage.removeItem("level_editor_api_endpoint");
+        alert("API 端点已清除！");
+      }
+    }
+  });
+
   const importInput = document.createElement("input");
   importInput.type = "file";
   importInput.accept = ".json,application/json";
@@ -4411,6 +4484,8 @@ function openLevelEditor() {
   actions.appendChild(applyBtn);
   actions.appendChild(previewBtn);
   actions.appendChild(exportBtn);
+  actions.appendChild(uploadBtn);
+  actions.appendChild(configApiBtn);
   actions.appendChild(importLabel);
   actions.appendChild(clearThumbBtn);
   actions.appendChild(closeBtn);
@@ -4841,7 +4916,10 @@ function openLevelEditor() {
 
   function selectLevelByIndex(idx) {
     // highlight in list
-    const items = Array.from(list.children);
+    // Note: list.children includes the batch-mode-toggle, so we need to filter it out
+    const items = Array.from(list.children).filter(
+      (child) => !child.classList.contains("batch-mode-toggle")
+    );
     items.forEach((it, i) => {
       if (i === idx) it.classList.add("selected");
       else it.classList.remove("selected");

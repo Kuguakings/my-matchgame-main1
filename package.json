@@ -1,0 +1,16 @@
+{
+  "name": "my-matchgame",
+  "version": "1.0.0",
+  "description": "Match-3 game with level editor",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.x"
+  }
+}
+

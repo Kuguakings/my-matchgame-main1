@@ -3662,6 +3662,108 @@ function openLevelEditor() {
     renderLevelMenu();
   });
 
+  // Batch operations state and controls (must be defined before use)
+  let batchMode = false;
+  let selectedIndices = new Set();
+
+  const batchControls = document.createElement("div");
+  batchControls.style.display = "flex";
+  batchControls.style.flexDirection = "column";
+  batchControls.style.gap = "4px";
+  batchControls.style.marginTop = "8px";
+  batchControls.style.padding = "8px";
+  batchControls.style.backgroundColor = "#111";
+  batchControls.style.borderRadius = "4px";
+  batchControls.style.border = "1px solid #333";
+  batchControls.style.display = "none"; // Hidden by default
+
+  const batchSelectAllBtn = document.createElement("button");
+  batchSelectAllBtn.textContent = "全选";
+  batchSelectAllBtn.className = "editor-button";
+  batchSelectAllBtn.addEventListener("click", () => {
+    if (selectedIndices.size === window.LEVELS.length) {
+      selectedIndices.clear();
+    } else {
+      selectedIndices = new Set(window.LEVELS.map((_, i) => i));
+    }
+    renderLevelList();
+    updateBatchControls();
+  });
+
+  const batchUnlockBtn = document.createElement("button");
+  batchUnlockBtn.textContent = "批量解锁";
+  batchUnlockBtn.className = "editor-button";
+  batchUnlockBtn.disabled = true;
+  batchUnlockBtn.addEventListener("click", () => {
+    if (selectedIndices.size === 0) return;
+    selectedIndices.forEach((idx) => {
+      if (window.LEVELS[idx]) {
+        window.LEVELS[idx].unlocked = true;
+      }
+    });
+    renderLevelList();
+    renderLevelMenu();
+    alert(`已解锁 ${selectedIndices.size} 个关卡`);
+  });
+
+  const batchLockBtn = document.createElement("button");
+  batchLockBtn.textContent = "批量锁定";
+  batchLockBtn.className = "editor-button";
+  batchLockBtn.disabled = true;
+  batchLockBtn.addEventListener("click", () => {
+    if (selectedIndices.size === 0) return;
+    selectedIndices.forEach((idx) => {
+      if (window.LEVELS[idx]) {
+        window.LEVELS[idx].unlocked = false;
+      }
+    });
+    renderLevelList();
+    renderLevelMenu();
+    alert(`已锁定 ${selectedIndices.size} 个关卡`);
+  });
+
+  const batchDeleteBtn = document.createElement("button");
+  batchDeleteBtn.textContent = "批量删除";
+  batchDeleteBtn.className = "editor-button";
+  batchDeleteBtn.style.backgroundColor = "#a22";
+  batchDeleteBtn.disabled = true;
+  batchDeleteBtn.addEventListener("click", () => {
+    if (selectedIndices.size === 0) return;
+    if (
+      !confirm(
+        `确认删除选中的 ${selectedIndices.size} 个关卡？此操作无法撤销！`
+      )
+    )
+      return;
+
+    // Delete in reverse order to maintain indices
+    const sortedIndices = Array.from(selectedIndices).sort((a, b) => b - a);
+    sortedIndices.forEach((idx) => {
+      window.LEVELS.splice(idx, 1);
+    });
+
+    selectedIndices.clear();
+    selectedIndex = null;
+    clearForm();
+    renderLevelList();
+    renderLevelMenu();
+    alert(`已删除 ${sortedIndices.length} 个关卡`);
+  });
+
+  batchControls.appendChild(batchSelectAllBtn);
+  batchControls.appendChild(batchUnlockBtn);
+  batchControls.appendChild(batchLockBtn);
+  batchControls.appendChild(batchDeleteBtn);
+
+  function updateBatchControls() {
+    const count = selectedIndices.size;
+    batchUnlockBtn.disabled = count === 0;
+    batchLockBtn.disabled = count === 0;
+    batchDeleteBtn.disabled = count === 0;
+    batchSelectAllBtn.textContent =
+      count === window.LEVELS.length ? "取消全选" : "全选";
+  }
+
   left.appendChild(title);
   left.appendChild(list);
   left.appendChild(batchControls);
@@ -4288,6 +4390,20 @@ function openLevelEditor() {
   historyControls.style.display = "flex";
   historyControls.style.gap = "4px";
   historyControls.style.marginBottom = "8px";
+
+  // Undo/Redo buttons (must be defined before appending to historyControls)
+  const undoBtn = document.createElement("button");
+  undoBtn.textContent = "撤销 (Ctrl+Z)";
+  undoBtn.className = "editor-button";
+  undoBtn.type = "button";
+  undoBtn.disabled = true;
+
+  const redoBtn = document.createElement("button");
+  redoBtn.textContent = "重做 (Ctrl+Y)";
+  redoBtn.className = "editor-button";
+  redoBtn.type = "button";
+  redoBtn.disabled = true;
+
   historyControls.appendChild(undoBtn);
   historyControls.appendChild(redoBtn);
 
@@ -4617,19 +4733,8 @@ function openLevelEditor() {
     updateUndoRedoButtons();
   }
 
-  // Undo/Redo buttons
-  const undoBtn = document.createElement("button");
-  undoBtn.textContent = "撤销 (Ctrl+Z)";
-  undoBtn.className = "editor-button";
-  undoBtn.type = "button";
-  undoBtn.disabled = true;
+  // Add event listeners to undo/redo buttons (buttons already defined above)
   undoBtn.addEventListener("click", undo);
-
-  const redoBtn = document.createElement("button");
-  redoBtn.textContent = "重做 (Ctrl+Y)";
-  redoBtn.className = "editor-button";
-  redoBtn.type = "button";
-  redoBtn.disabled = true;
   redoBtn.addEventListener("click", redo);
 
   // Keyboard shortcuts
@@ -4744,10 +4849,6 @@ function openLevelEditor() {
     if (idx != null) populateForm(idx);
   }
 
-  // Batch operations state
-  let batchMode = false;
-  let selectedIndices = new Set();
-
   function renderLevelList() {
     list.innerHTML = "";
 
@@ -4823,104 +4924,6 @@ function openLevelEditor() {
       list.appendChild(it);
     });
   }
-
-  function updateBatchControls() {
-    const count = selectedIndices.size;
-    batchUnlockBtn.disabled = count === 0;
-    batchLockBtn.disabled = count === 0;
-    batchDeleteBtn.disabled = count === 0;
-    batchSelectAllBtn.textContent =
-      count === window.LEVELS.length ? "取消全选" : "全选";
-  }
-
-  const batchControls = document.createElement("div");
-  batchControls.style.display = "flex";
-  batchControls.style.flexDirection = "column";
-  batchControls.style.gap = "4px";
-  batchControls.style.marginTop = "8px";
-  batchControls.style.padding = "8px";
-  batchControls.style.backgroundColor = "#111";
-  batchControls.style.borderRadius = "4px";
-  batchControls.style.border = "1px solid #333";
-  batchControls.style.display = "none"; // Hidden by default
-
-  const batchSelectAllBtn = document.createElement("button");
-  batchSelectAllBtn.textContent = "全选";
-  batchSelectAllBtn.className = "editor-button";
-  batchSelectAllBtn.addEventListener("click", () => {
-    if (selectedIndices.size === window.LEVELS.length) {
-      selectedIndices.clear();
-    } else {
-      selectedIndices = new Set(window.LEVELS.map((_, i) => i));
-    }
-    renderLevelList();
-    updateBatchControls();
-  });
-
-  const batchUnlockBtn = document.createElement("button");
-  batchUnlockBtn.textContent = "批量解锁";
-  batchUnlockBtn.className = "editor-button";
-  batchUnlockBtn.disabled = true;
-  batchUnlockBtn.addEventListener("click", () => {
-    if (selectedIndices.size === 0) return;
-    selectedIndices.forEach((idx) => {
-      if (window.LEVELS[idx]) {
-        window.LEVELS[idx].unlocked = true;
-      }
-    });
-    renderLevelList();
-    renderLevelMenu();
-    alert(`已解锁 ${selectedIndices.size} 个关卡`);
-  });
-
-  const batchLockBtn = document.createElement("button");
-  batchLockBtn.textContent = "批量锁定";
-  batchLockBtn.className = "editor-button";
-  batchLockBtn.disabled = true;
-  batchLockBtn.addEventListener("click", () => {
-    if (selectedIndices.size === 0) return;
-    selectedIndices.forEach((idx) => {
-      if (window.LEVELS[idx]) {
-        window.LEVELS[idx].unlocked = false;
-      }
-    });
-    renderLevelList();
-    renderLevelMenu();
-    alert(`已锁定 ${selectedIndices.size} 个关卡`);
-  });
-
-  const batchDeleteBtn = document.createElement("button");
-  batchDeleteBtn.textContent = "批量删除";
-  batchDeleteBtn.className = "editor-button";
-  batchDeleteBtn.style.backgroundColor = "#a22";
-  batchDeleteBtn.disabled = true;
-  batchDeleteBtn.addEventListener("click", () => {
-    if (selectedIndices.size === 0) return;
-    if (
-      !confirm(
-        `确认删除选中的 ${selectedIndices.size} 个关卡？此操作无法撤销！`
-      )
-    )
-      return;
-
-    // Delete in reverse order to maintain indices
-    const sortedIndices = Array.from(selectedIndices).sort((a, b) => b - a);
-    sortedIndices.forEach((idx) => {
-      window.LEVELS.splice(idx, 1);
-    });
-
-    selectedIndices.clear();
-    selectedIndex = null;
-    clearForm();
-    renderLevelList();
-    renderLevelMenu();
-    alert(`已删除 ${sortedIndices.length} 个关卡`);
-  });
-
-  batchControls.appendChild(batchSelectAllBtn);
-  batchControls.appendChild(batchUnlockBtn);
-  batchControls.appendChild(batchLockBtn);
-  batchControls.appendChild(batchDeleteBtn);
 
   // Show/hide batch controls based on mode
   const originalRenderLevelList = renderLevelList;

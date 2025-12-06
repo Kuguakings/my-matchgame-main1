@@ -16,6 +16,10 @@
           <div id="level-info">关卡: <span id="level">1</span></div>
           <div id="score-info">分数: <span id="score">0</span></div>
         </div>
+        <!-- 菜单按钮 -->
+        <div id="menu-controls">
+          <button id="open-menu-btn">菜单</button>
+        </div>
         <div id="target-panel">
           <!-- Target items injected by JS -->
         </div>
@@ -30,5 +34,22 @@
     </div>
     <script src="sound.js"></script>
     <script src="game.js"></script>
+    <!-- 关卡选择面板 -->
+    <div id="menu-overlay" class="hidden" aria-hidden="true">
+      <div id="main-menu">
+        <h2>关卡选择</h2>
+        <div id="menu-buttons">
+          <button id="btn-levels">关卡列表</button>
+          <button id="btn-close-menu">关闭</button>
+        </div>
+
+        <div id="level-panel" class="hidden">
+          <div class="level-grid" id="level-grid"></div>
+          <div class="level-footer">
+            <button id="btn-back-to-main">返回</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

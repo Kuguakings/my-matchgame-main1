@@ -55,7 +55,26 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     { once: true }
   );
-  initGame();
+  // Load user settings and levels BEFORE starting the first level.
+  try {
+    loadSettings();
+  } catch (e) {
+    /* noop */
+  }
+
+  if (typeof loadLevels === "function") {
+    loadLevels()
+      .then(() => {
+        // Levels loaded (or fallback applied), now safe to start game
+        initGame();
+      })
+      .catch((err) => {
+        console.warn("loadLevels failed:", err);
+        initGame();
+      });
+  } else {
+    initGame();
+  }
 });
 
 /*
@@ -190,127 +209,16 @@ function showVFX(r, c, type, orientation = "horizontal") {
       el.style.top = cell.offsetTop + "px";
       el.style.left = cell.offsetLeft + "px";
     } else {
-      el.style.width = `calc(100% / ${GRID_SIZE})`;
-      el.style.height = `calc(100% / ${GRID_SIZE})`;
-      el.style.top = r * (100 / GRID_SIZE) + "%";
-      el.style.left = c * (100 / GRID_SIZE) + "%";
+      // Fallback: if we cannot compute exact cell bounds, just show a simple vortex element
+      el.classList.add("void-vortex");
+      vfxContainer.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
     }
-  } else if (type === "holy-beam") {
-    const flash = document.createElement("div");
-    flash.classList.add("holy-flash");
-    document.body.appendChild(flash);
-    setTimeout(() => flash.remove(), 1000);
-
-    const beam = document.createElement("div");
-    beam.classList.add("holy-beam");
-    beam.style.left = (c + 0.5) * (100 / GRID_SIZE) + "%";
-    vfxContainer.appendChild(beam);
-    setTimeout(() => beam.remove(), 1000);
-    return;
-  } else if (type === "lightning") {
-    const target = arguments[3]; // Expect target object {r, c}
-    if (target) {
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.style.position = "absolute";
-      svg.style.top = "0";
-      svg.style.left = "0";
-      svg.style.width = "100%";
-      svg.style.height = "100%";
-      svg.style.pointerEvents = "none";
-      svg.style.zIndex = "100";
-
-      // Calculate percentages manually for SVG lines if possible, or use pixel coords.
-      // Using percentages in x1/y1 works in SVG if standard.
-      const x1 = ((c + 0.5) * 100) / GRID_SIZE + "%";
-      const y1 = ((r + 0.5) * 100) / GRID_SIZE + "%";
-      // 修复：目标坐标应使用 target.c (列) 与 target.r (行)
-      const x2 = ((target.c + 0.5) * 100) / GRID_SIZE + "%";
-      const y2 = ((target.r + 0.5) * 100) / GRID_SIZE + "%";
-
-      const line = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "line"
-      );
-      line.setAttribute("x1", x1);
-      line.setAttribute("y1", y1);
-      line.setAttribute("x2", x2);
-      line.setAttribute("y2", y2);
-      line.setAttribute("stroke", "#ffeb3b");
-      line.setAttribute("stroke-width", "4");
-      line.classList.add("lightning-anim");
-
-      svg.appendChild(line);
-      vfxContainer.appendChild(svg);
-      setTimeout(() => svg.remove(), 400);
-      return;
-    }
-  }
-
-  vfxContainer.appendChild(el);
-  setTimeout(() => el.remove(), 1000);
-}
-
-/*
-  initGame()
-  - 入口：初始化游戏，通常在 DOMContentLoaded 后调用。
-  - 当前实现：直接调用 startLevel(1) 启动第 1 关。
-*/
-function initGame() {
-  startLevel(1);
-}
-
-/*
-  startLevel(lvl)
-  - 作用：开始指定关卡，重置分数、目标、生成新的棋盘并刷新 UI。
-  - 参数：lvl: 要开始的关卡数字。
-  - 副作用：会调用 createBoard() 与 renderBoard()，重置 levelTargets 并更新 messageArea。
-*/
-function startLevel(lvl) {
-  level = lvl;
-  score = 0;
-  targetScore = level * 1000;
-
-  // Define Targets
-  levelTargets = {};
-  const baseCount = 10 + level * 5;
-
-  if (level === 1) {
-    levelTargets["red"] = baseCount;
-  } else if (level === 2) {
-    levelTargets["blue"] = baseCount;
-    levelTargets["green"] = baseCount;
   } else {
-    const numColors = Math.min(3, 1 + Math.floor(level / 2));
-    const shuffledColors = [...COLORS].sort(() => 0.5 - Math.random());
-    for (let i = 0; i < numColors; i++) {
-      levelTargets[shuffledColors[i]] = baseCount;
-    }
+    // 默认特效展示（未知 type）: 简单添加元素并短时间移除
+    vfxContainer.appendChild(el);
+    setTimeout(() => el.remove(), 800);
   }
-
-  levelDisplay.textContent = level;
-  scoreDisplay.textContent = `${score} / ${targetScore}`;
-
-  // Generate Goal Description
-  const colorNames = {
-    red: "红色",
-    blue: "蓝色",
-    green: "绿色",
-    purple: "紫色",
-    white: "白色",
-    orange: "橙色",
-    yellow: "黄色",
-  };
-  let goalText = "目标：";
-  let parts = [];
-  for (const [color, count] of Object.entries(levelTargets)) {
-    parts.push(`消除 ${count} 个${colorNames[color] || color}方块`);
-  }
-  parts.push(`达到 ${targetScore} 分`);
-  messageArea.textContent = parts.join("，");
-
-  updateTargetUI();
-  createBoard();
-  renderBoard();
 }
 
 /*
@@ -333,10 +241,23 @@ function updateTargetUI() {
     item.classList.add("target-item");
 
     const icon = document.createElement("div");
-    icon.classList.add("target-icon", `color-${color}`);
-
     const text = document.createElement("span");
-    text.textContent = count > 0 ? count : "✔";
+
+    // 支持三类 key：颜色 key（red/blue...），命名空间类型 key (__type__:name)，以及其它自定义 key
+    if (color.startsWith("__type__:")) {
+      const typeName = color.replace("__type__:", "");
+      icon.classList.add("target-icon", "target-type");
+      icon.textContent = typeName;
+      text.textContent = count > 0 ? `x ${count}` : "✔";
+    } else if (COLORS.includes(color)) {
+      icon.classList.add("target-icon", `color-${color}`);
+      text.textContent = count > 0 ? count : "✔";
+    } else {
+      // generic type name
+      icon.classList.add("target-icon", "target-type");
+      icon.textContent = color;
+      text.textContent = count > 0 ? `x ${count}` : "✔";
+    }
 
     item.appendChild(icon);
     item.appendChild(text);
@@ -1319,6 +1240,19 @@ async function removeMatches(matches) {
     if (tile && levelTargets[tile.color] && levelTargets[tile.color] > 0) {
       levelTargets[tile.color]--;
       targetsUpdated = true;
+    }
+
+    // 支持按 tile.type / 特殊类型目标递减（关卡目标中以 "__type__:name" 存储）
+    if (tile && tile.type) {
+      const typeKey = "__type__:" + tile.type;
+      if (levelTargets[typeKey] && levelTargets[typeKey] > 0) {
+        levelTargets[typeKey]--;
+        targetsUpdated = true;
+      } else if (levelTargets[tile.type] && levelTargets[tile.type] > 0) {
+        // 兼容直接使用 typeName 作为 key 的情况
+        levelTargets[tile.type]--;
+        targetsUpdated = true;
+      }
     }
 
     const cell = getCellElement(r, c);
@@ -3025,10 +2959,76 @@ function checkLevelProgress() {
     const nextBtn = document.getElementById("restart-btn");
     if (nextBtn) {
       nextBtn.style.display = "block";
+      // 计算并保存当前关卡的星级（如果关卡数据提供了星级阈值）
+      try {
+        const curLevel = getLevelById(level);
+        if (curLevel) {
+          const thresholds = Array.isArray(curLevel.stars)
+            ? curLevel.stars
+            : [];
+          let earned = 0;
+          for (let i = 0; i < thresholds.length; i++) {
+            if (score >= thresholds[i]) earned = i + 1;
+          }
+          // 保留最高星级
+          curLevel._stars = Math.max(curLevel._stars || 0, earned);
+        }
+      } catch (e) {
+        console.warn("计算星级时出错", e);
+      }
+
+      // 自动解锁下一关并保存进度；根据用户设置决定是否自动跳转
+      try {
+        const nextId =
+          window.LevelManager && LevelManager.getNextLevel
+            ? LevelManager.getNextLevel(level)
+            : level + 1;
+        if (nextId) {
+          if (window.LevelManager && LevelManager.unlockLevel) {
+            LevelManager.unlockLevel(nextId);
+          } else {
+            // 兼容性回退：直接设置关卡 unlocked 字段
+            const nl = getLevelById(nextId);
+            if (nl) nl.unlocked = true;
+            saveProgress();
+          }
+        }
+
+        // 持久化当前进度（包括可能更新的 _stars）
+        try {
+          saveProgress();
+        } catch (e) {
+          /* noop */
+        }
+
+        // 刷新菜单显示（若菜单存在渲染函数）
+        if (typeof renderLevelMenu === "function") renderLevelMenu();
+
+        // 若用户设置了自动跳转，则短延迟后进入下一关
+        if (window.GameSettings && window.GameSettings.autoJumpNext && nextId) {
+          setTimeout(() => startLevel(nextId), 300);
+        }
+      } catch (e) {
+        console.warn("解锁下一关时出错", e);
+      }
+
+      // 更新菜单显示并跳转到下一关
       nextBtn.onclick = () => {
         nextBtn.style.display = "none";
-        startLevel(level + 1);
+        const nextId =
+          window.LevelManager && LevelManager.getNextLevel
+            ? LevelManager.getNextLevel(level)
+            : level + 1;
+        if (nextId) startLevel(nextId);
       };
+
+      // 持久化进度并刷新菜单（如存在 renderLevelMenu）
+      try {
+        saveProgress();
+      } catch (e) {
+        /* noop */
+      }
+      if (typeof renderLevelMenu === "function") renderLevelMenu();
     }
 
     // 播放胜利音效
@@ -3037,3 +3037,1060 @@ function checkLevelProgress() {
     }
   }
 }
+
+// ==========================================
+// 关卡加载器与进度管理 (Levels Loader & Progress)
+// - 自动尝试 fetch `levels.json`，若失败回退到内置简易关卡，确保在 file:// 情况下也能测试。
+// - 提供 `window.LevelManager` 全局对象以便控制台或菜单调用：
+//     LevelManager.loadLevels(), .saveProgress(), .loadProgress(), .getLevelById(id), .unlockLevel(id), .getNextLevel(id)
+// ==========================================
+
+const LEVELS_URL = "levels.json";
+const LEVELS_PROGRESS_KEY = "mymatch_levels_progress_v1";
+const SETTINGS_KEY = "mymatch_settings_v1";
+
+// 简易回退关卡（当 fetch 失败或未通过 http 服务时使用）
+const _embeddedFallbackLevels = [
+  {
+    id: 1,
+    name: "入门练习",
+    unlocked: true,
+    moves: 25,
+    targets: [{ type: "score", count: 5000 }],
+    theme: "plain",
+    stars: [3000, 6000, 10000],
+    description: "内置回退：第1关",
+  },
+];
+
+window.LEVELS = [];
+
+// 全局设置（持久化到 localStorage）
+window.GameSettings = {
+  autoJumpNext: false, // 完成关卡后是否自动跳转到下一关（默认 false）
+};
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s && typeof s === "object") {
+      window.GameSettings = Object.assign(window.GameSettings, s);
+    }
+  } catch (e) {
+    console.warn("加载设置失败", e);
+  }
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(window.GameSettings));
+  } catch (e) {
+    console.warn("保存设置失败", e);
+  }
+}
+
+async function loadLevels() {
+  try {
+    const resp = await fetch(LEVELS_URL, { cache: "no-cache" });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+    if (!Array.isArray(data)) throw new Error("levels.json 格式错误");
+    window.LEVELS = data;
+    console.log("levels.json 加载成功，关卡数量：", window.LEVELS.length);
+  } catch (err) {
+    console.warn(
+      "无法通过 fetch 加载 levels.json，使用内置回退关卡。错误：",
+      err
+    );
+    window.LEVELS = _embeddedFallbackLevels.slice();
+  }
+
+  // 在加载关卡后应用本地进度覆盖（若有）
+  loadProgress();
+
+  // 触发事件，供菜单/调试监听
+  document.dispatchEvent(
+    new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
+  );
+}
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(LEVELS_PROGRESS_KEY);
+    if (!raw) return;
+    const prog = JSON.parse(raw);
+    if (!prog || typeof prog !== "object") return;
+
+    // 处理解锁信息
+    if (Array.isArray(prog.unlocked)) {
+      const unlockedSet = new Set(prog.unlocked);
+      window.LEVELS.forEach((l) => {
+        l.unlocked = !!unlockedSet.has(l.id);
+      });
+    }
+
+    // 处理星级/得分等可选信息
+    if (prog.stars && typeof prog.stars === "object") {
+      window.LEVELS.forEach((l) => {
+        l._stars = prog.stars[l.id] || 0;
+      });
+    }
+    console.log("本地关卡进度加载完成");
+  } catch (err) {
+    console.warn("解析本地进度时发生错误：", err);
+  }
+}
+
+function saveProgress() {
+  try {
+    const unlocked = window.LEVELS.filter((l) => l.unlocked).map((l) => l.id);
+    const stars = {};
+    window.LEVELS.forEach((l) => {
+      if (l._stars) stars[l.id] = l._stars;
+    });
+    const payload = { unlocked, stars, updatedAt: Date.now() };
+    localStorage.setItem(LEVELS_PROGRESS_KEY, JSON.stringify(payload));
+    console.log("已保存关卡进度");
+  } catch (err) {
+    console.warn("保存关卡进度失败：", err);
+  }
+}
+
+function getLevelById(id) {
+  return window.LEVELS.find((l) => l.id === Number(id)) || null;
+}
+
+function unlockLevel(id) {
+  const lvl = getLevelById(id);
+  if (!lvl) return false;
+  if (!lvl.unlocked) {
+    lvl.unlocked = true;
+    saveProgress();
+  }
+  return true;
+}
+
+function getNextLevel(currentId) {
+  const ids = window.LEVELS.map((l) => l.id).sort((a, b) => a - b);
+  const idx = ids.indexOf(Number(currentId));
+  if (idx === -1) return ids.length ? ids[0] : null;
+  return ids[idx + 1] || null;
+}
+
+// 对外暴露简易 API
+window.LevelManager = {
+  loadLevels,
+  loadProgress,
+  saveProgress,
+  getLevelById,
+  unlockLevel,
+  getNextLevel,
+  _rawKey: LEVELS_PROGRESS_KEY,
+};
+
+/*
+  startLevel(id)
+  - 负责初始化指定关卡：设置 `level`, `score`, `targetScore`, `levelTargets`，并刷新 UI（目标面板/分数/棋盘）。
+  - 优先使用 `levels.json` 中定义的关卡数据；若未找到则使用简单的程序化回退策略。
+*/
+function startLevel(id) {
+  // normalize id
+  const want = Number(id) || 1;
+  const lvlDef = getLevelById(want);
+
+  // reset common runtime state
+  level = want;
+  score = 0;
+  selectedCell = null;
+  isProcessing = false;
+  levelTargets = {};
+
+  // compute targetScore and levelTargets from definition if present
+  if (lvlDef) {
+    // score-target may be explicit or encoded in targets
+    targetScore = lvlDef.targetScore || 0;
+    const tarr = Array.isArray(lvlDef.targets) ? lvlDef.targets : [];
+    for (const t of tarr) {
+      if (!t || !t.type) continue;
+      if (t.type === "score") {
+        targetScore = targetScore || Number(t.count) || 0;
+      } else if (t.type === "collect") {
+        if (t.color) levelTargets[t.color] = Number(t.count) || 0;
+      } else if (t.type === "clearType" || t.type === "destroy") {
+        // use a namespaced key so UI can skip it when rendering color badges
+        const key = "__type__:" + (t.typeName || "");
+        levelTargets[key] = Number(t.count) || 0;
+      } else {
+        // generic fallback: count by typeName or color
+        if (t.color) levelTargets[t.color] = Number(t.count) || 0;
+        else if (t.typeName) levelTargets[t.typeName] = Number(t.count) || 0;
+      }
+    }
+  } else {
+    // procedural fallback if no definition
+    targetScore = 1000 + want * 500;
+    const baseCount = 10 + want * 5;
+    if (want === 1) {
+      levelTargets["red"] = baseCount;
+    } else if (want === 2) {
+      levelTargets["blue"] = baseCount;
+      levelTargets["green"] = baseCount;
+    } else {
+      const numColors = Math.min(3, 1 + Math.floor(want / 2));
+      const shuffledColors = [...COLORS].sort(() => 0.5 - Math.random());
+      for (let i = 0; i < numColors; i++)
+        levelTargets[shuffledColors[i]] = baseCount;
+    }
+  }
+
+  // Update UI
+  if (levelDisplay) levelDisplay.textContent = level;
+  if (scoreDisplay) scoreDisplay.textContent = `${score} / ${targetScore}`;
+
+  // Summary in message area
+  if (messageArea) {
+    const colorNames = {
+      red: "红色",
+      blue: "蓝色",
+      green: "绿色",
+      purple: "紫色",
+      white: "白色",
+      orange: "橙色",
+      yellow: "黄色",
+    };
+    let parts = [];
+    for (const [k, v] of Object.entries(levelTargets)) {
+      if (k.startsWith("__type__:")) {
+        parts.push(`清除 ${v} 个 ${k.replace("__type__:", "")}`);
+      } else {
+        parts.push(`消除 ${v} 个${colorNames[k] || k}方块`);
+      }
+    }
+    if (targetScore) parts.push(`达到 ${targetScore} 分`);
+    messageArea.textContent = parts.join("，");
+  }
+
+  // render UI and board
+  updateTargetUI();
+  createBoard();
+  renderBoard();
+}
+
+/*
+  initGame()
+  - 游戏初始化入口：在关卡与设置加载后调用，渲染菜单并默认开始第一个已解锁关卡（或第1关）。
+*/
+function initGame() {
+  // Ensure levels are loaded
+  const levels =
+    Array.isArray(window.LEVELS) && window.LEVELS.length ? window.LEVELS : [];
+  // find first unlocked level or fallback to first
+  let startId = 1;
+  if (levels.length) {
+    const found = levels.find((x) => x.unlocked) || levels[0];
+    startId = found.id || levels[0].id || 1;
+  }
+  // Render menu UI
+  try {
+    renderLevelMenu();
+  } catch (e) {
+    console.warn("renderLevelMenu failed during init", e);
+  }
+
+  // Start the level
+  startLevel(startId);
+}
+
+// levels 加载已在顶部 DOMContentLoaded 回调中处理（避免重复调用）
+
+// ---------------------------
+// 菜单控制与关卡渲染 (Menu Controller + Renderer)
+// - 依赖 window.LEVELS 与 LevelManager
+// ---------------------------
+function renderLevelMenu() {
+  const grid = document.getElementById("level-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  const levels =
+    Array.isArray(window.LEVELS) && window.LEVELS.length ? window.LEVELS : [];
+  // 遍历所有关卡并渲染卡片
+  // 每张卡片包含：缩略图 / 名称 / 步数与星级 / 简短描述 / 徽章（锁定/已通过）
+  levels.forEach((l) => {
+    const card = document.createElement("div");
+    card.className = "level-card" + (l.unlocked ? "" : " locked");
+
+    const thumb = document.createElement("div");
+    thumb.className = "level-thumb";
+    // 如果提供了缩略图则使用之；否则使用一个深色渐变作为占位符。
+    if (l.thumbnail) {
+      thumb.style.backgroundImage = `url('${l.thumbnail}')`;
+      thumb.setAttribute("role", "img");
+      thumb.setAttribute("aria-label", `关卡 ${l.id} 缩略图`);
+    } else {
+      thumb.style.background = "linear-gradient(135deg,#1b1b1b,#333)";
+      thumb.style.display = "flex";
+      thumb.style.alignItems = "center";
+      thumb.style.justifyContent = "center";
+      const ph = document.createElement("div");
+      ph.textContent = l.id;
+      ph.style.color = "#666";
+      ph.style.fontSize = "18px";
+      ph.style.fontWeight = "600";
+      thumb.appendChild(ph);
+    }
+
+    const name = document.createElement("div");
+    name.className = "level-name";
+    name.textContent = `${l.id}. ${l.name}`;
+
+    const meta = document.createElement("div");
+    meta.className = "level-meta";
+
+    const info = document.createElement("div");
+    info.className = "level-info";
+    info.textContent = l.moves ? `${l.moves} 步 · ` : "";
+
+    // 简短描述（显示在卡片上以帮助玩家快速了解该关卡），超过长度则截断
+    const desc = document.createElement("div");
+    desc.className = "level-desc";
+    desc.textContent = l.description || "";
+    desc.title = l.description || "";
+    desc.style.fontSize = "12px";
+    desc.style.color = "#bbb";
+    desc.style.marginTop = "6px";
+    if (desc.textContent.length > 60) {
+      desc.textContent = desc.textContent.slice(0, 58) + "…";
+    }
+
+    const starsWrap = document.createElement("div");
+    starsWrap.className = "level-stars";
+    const maxStars = Array.isArray(l.stars) ? l.stars.length : 0;
+    const achieved = l._stars || 0;
+
+    // helper: create inline SVG star (filled or empty)
+    function createStarSvg(filled) {
+      const SVG_NS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("class", "star-svg" + (filled ? " filled" : " empty"));
+      svg.setAttribute("width", "18");
+      svg.setAttribute("height", "18");
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute(
+        "d",
+        "M12 .587l3.668 7.431L24 9.748l-6 5.848L19.335 24 12 19.897 4.665 24 6 15.596 0 9.748l8.332-1.73L12 .587z"
+      );
+      if (filled) {
+        path.setAttribute("fill", "currentColor");
+      } else {
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "currentColor");
+        path.setAttribute("stroke-width", "1");
+      }
+      svg.appendChild(path);
+      return svg;
+    }
+
+    for (let i = 1; i <= Math.max(1, maxStars); i++) {
+      const starSvg = createStarSvg(i <= achieved);
+      // accessibility: announce filled/empty via aria-hidden and container label
+      starSvg.setAttribute("aria-hidden", "true");
+      starsWrap.appendChild(starSvg);
+    }
+
+    // aria/info: 包含名称、星级与简短描述，便于辅助设备读取
+    starsWrap.setAttribute("aria-label", `星级: ${achieved}/${maxStars}`);
+
+    meta.appendChild(info);
+    meta.appendChild(starsWrap);
+
+    // 卡片徽章：解锁/通过状态
+    const badge = document.createElement("div");
+    badge.className = "level-badge";
+    if (!l.unlocked) {
+      badge.textContent = "锁定";
+      badge.classList.add("locked-badge");
+    } else if (achieved > 0) {
+      badge.textContent = `已通过 ${achieved}★`;
+      badge.classList.add("passed-badge");
+    } else {
+      // 已解锁但未通过：显示小提示
+      badge.textContent = "已解锁";
+      badge.classList.add("unlocked-badge");
+    }
+    badge.setAttribute("aria-hidden", "true");
+    // attach badge to card (positioning via CSS)
+    card.appendChild(badge);
+
+    // accessibility: tooltip for card
+    // 卡片的 title 包含更多信息（便于鼠标悬停时查看）
+    card.setAttribute(
+      "title",
+      `${l.id}. ${l.name} — 星级 ${achieved}/${maxStars}` +
+        (l.description ? ` — ${l.description}` : "")
+    );
+
+    // 卡片对辅助技术的完整描述
+    card.setAttribute(
+      "aria-label",
+      `${l.id} ${l.name}，星级 ${achieved} / ${maxStars}。${
+        l.description || ""
+      }`
+    );
+
+    card.appendChild(thumb);
+    card.appendChild(name);
+    card.appendChild(meta);
+    card.appendChild(desc);
+
+    if (l.unlocked) {
+      card.addEventListener("click", () => {
+        hideMenu();
+        setTimeout(() => startLevel(l.id), 80);
+      });
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+function showMenu() {
+  const overlay = document.getElementById("menu-overlay");
+  const panel = document.getElementById("level-panel");
+  if (!overlay) return;
+  overlay.classList.remove("hidden");
+  overlay.setAttribute("aria-hidden", "false");
+  if (panel) panel.classList.remove("hidden");
+  renderLevelMenu();
+}
+
+/* =====================
+   简易关卡编辑器（JSON 编辑器）
+   - 目的：提供一个仅本地使用的编辑器，允许你查看/编辑 `window.LEVELS` 的 JSON，导入/导出，并立即在菜单中生效。
+   - 实现策略：使用一个模态窗口包含 textarea（JSON），提供 Apply、Export、Import、Close 操作。
+   - 注意：该编辑器不会直接写磁盘上的 `levels.json`，请使用 Export 导出文件并手动替换仓库文件以提交变更。
+   ===================== */
+function openLevelEditor() {
+  // 如果已存在 overlay 则直接显示
+  if (document.getElementById("level-editor-overlay")) {
+    document.getElementById("level-editor-overlay").classList.remove("hidden");
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.id = "level-editor-overlay";
+  overlay.className = "editor-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "editor-panel";
+
+  // Left: level list + controls
+  const left = document.createElement("div");
+  left.className = "editor-left";
+
+  const title = document.createElement("h3");
+  title.textContent = "关卡编辑器";
+
+  const list = document.createElement("div");
+  list.id = "editor-level-list";
+  list.className = "editor-level-list";
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "editor-button";
+  addBtn.textContent = "添加新关卡";
+  addBtn.addEventListener("click", () => {
+    const newId =
+      (window.LEVELS || []).reduce((m, v) => Math.max(m, v.id || 0), 0) + 1;
+    const newLevel = {
+      id: newId,
+      name: `新关卡 ${newId}`,
+      unlocked: false,
+      moves: 20,
+      targetScore: 5000,
+      targets: [{ type: "score", count: 5000 }],
+      theme: "plain",
+      stars: [3000, 6000, 10000],
+      thumbnail: "",
+      description: "",
+      specialRules: {},
+    };
+    window.LEVELS = window.LEVELS || [];
+    window.LEVELS.push(newLevel);
+    renderLevelList();
+    selectLevelByIndex(window.LEVELS.length - 1);
+  });
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "editor-button";
+  deleteBtn.textContent = "删除所选关卡";
+  deleteBtn.addEventListener("click", () => {
+    if (selectedIndex == null) return alert("请先选择要删除的关卡");
+    if (!confirm("确认删除当前选中的关卡？此操作无法撤销（仅修改内存）"))
+      return;
+    window.LEVELS.splice(selectedIndex, 1);
+    selectedIndex = null;
+    renderLevelList();
+    clearForm();
+    renderLevelMenu();
+  });
+
+  left.appendChild(title);
+  left.appendChild(list);
+  left.appendChild(addBtn);
+  left.appendChild(deleteBtn);
+
+  // Right: form
+  const right = document.createElement("div");
+  right.className = "editor-right";
+
+  const form = document.createElement("form");
+  form.id = "level-editor-form";
+  form.className = "editor-form";
+
+  // Utility to create labeled input
+  function labeled(labelText, inputEl) {
+    const wrap = document.createElement("div");
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    label.style.display = "block";
+    label.style.marginBottom = "4px";
+    wrap.appendChild(label);
+    wrap.appendChild(inputEl);
+    return wrap;
+  }
+
+  const idInput = document.createElement("input");
+  idInput.type = "number";
+  idInput.disabled = true;
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  const unlockedInput = document.createElement("input");
+  unlockedInput.type = "checkbox";
+  const movesInput = document.createElement("input");
+  movesInput.type = "number";
+  movesInput.min = 1;
+  const targetScoreInput = document.createElement("input");
+  targetScoreInput.type = "number";
+  targetScoreInput.min = 0;
+  const descInput = document.createElement("textarea");
+  descInput.rows = 3;
+  const starsRow = document.createElement("div");
+  starsRow.style.display = "flex";
+  starsRow.style.gap = "6px";
+  const starInputs = [];
+  for (let i = 0; i < 3; i++) {
+    const s = document.createElement("input");
+    s.type = "number";
+    s.min = 0;
+    s.placeholder = `星级${i + 1}`;
+    starInputs.push(s);
+    starsRow.appendChild(s);
+  }
+
+  // Thumbnail
+  const thumbPreview = document.createElement("img");
+  thumbPreview.className = "editor-thumb-preview";
+  const thumbInput = document.createElement("input");
+  thumbInput.type = "file";
+  thumbInput.accept = "image/*";
+  thumbInput.addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = (ev) => {
+      thumbPreview.src = ev.target.result;
+      // set to a temp store until apply
+      currentDraft.thumbnail = ev.target.result;
+    };
+    fr.readAsDataURL(f);
+  });
+
+  // 清除缩略图按钮（仅修改内存预览，不写磁盘）
+  const clearThumbBtn = document.createElement("button");
+  clearThumbBtn.type = "button";
+  clearThumbBtn.textContent = "清除缩略图";
+  clearThumbBtn.addEventListener("click", () => {
+    thumbPreview.src = "";
+    currentDraft.thumbnail = "";
+  });
+
+  // Targets editor
+  const targetsContainer = document.createElement("div");
+  targetsContainer.id = "targets-container";
+  targetsContainer.className = "targets-container";
+
+  function renderTargetsEditor(arr) {
+    targetsContainer.innerHTML = "";
+    (arr || []).forEach((t, idx) => {
+      const row = document.createElement("div");
+      row.className = "targets-row";
+
+      const typeSel = document.createElement("select");
+      const optMap = {
+        score: "分数",
+        collect: "收集（颜色）",
+        clearType: "清除类型",
+        destroy: "摧毁（对象）",
+      };
+      ["score", "collect", "clearType", "destroy"].forEach((opt) => {
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = optMap[opt] || opt;
+        if (t.type === opt) o.selected = true;
+        typeSel.appendChild(o);
+      });
+
+      // fieldA: for score -> none; for collect -> color select; for clearType/destroy -> object type select (with 自定义)
+      const fieldASelect = document.createElement("select");
+      const fieldACustom = document.createElement("input");
+      fieldACustom.type = "text";
+      fieldACustom.placeholder = "自定义...";
+      fieldACustom.style.display = "none";
+
+      const fieldB = document.createElement("input");
+      fieldB.type = "number";
+      fieldB.min = 0;
+
+      // Prepare color options from global COLORS
+      const colorNamesMap = {
+        red: "红色",
+        blue: "蓝色",
+        green: "绿色",
+        purple: "紫色",
+        white: "白色",
+        orange: "橙色",
+        yellow: "黄色",
+      };
+
+      function populateColorOptions(sel, selectedVal) {
+        sel.innerHTML = "";
+        const emptyOpt = document.createElement("option");
+        emptyOpt.value = "";
+        emptyOpt.textContent = "-- 请选择颜色 --";
+        sel.appendChild(emptyOpt);
+        (window.COLORS || COLORS || []).forEach((c) => {
+          const o = document.createElement("option");
+          o.value = c;
+          o.textContent = colorNamesMap[c] || c;
+          if (selectedVal === c) o.selected = true;
+          sel.appendChild(o);
+        });
+      }
+
+      // Common object types for clearType/destroy
+      const EDITOR_OBJECT_TYPES = ["rock", "ice", "crate", "barrel", "gem"];
+      const objectTypeNames = {
+        rock: "岩石 (rock)",
+        ice: "冰块 (ice)",
+        crate: "箱子 (crate)",
+        barrel: "木桶 (barrel)",
+        gem: "宝石 (gem)",
+      };
+
+      function populateObjectOptions(sel, selectedVal) {
+        sel.innerHTML = "";
+        const emptyOpt = document.createElement("option");
+        emptyOpt.value = "";
+        emptyOpt.textContent = "-- 请选择对象类型 --";
+        sel.appendChild(emptyOpt);
+        EDITOR_OBJECT_TYPES.forEach((k) => {
+          const o = document.createElement("option");
+          o.value = k;
+          o.textContent = objectTypeNames[k] || k;
+          if (selectedVal === k) o.selected = true;
+          sel.appendChild(o);
+        });
+        const custom = document.createElement("option");
+        custom.value = "__custom__";
+        custom.textContent = "自定义...";
+        sel.appendChild(custom);
+      }
+
+      function updateFields() {
+        const ty = typeSel.value;
+        if (ty === "score") {
+          fieldASelect.style.display = "none";
+          fieldACustom.style.display = "none";
+          fieldB.value = t.count || 0;
+        } else if (ty === "collect") {
+          populateColorOptions(fieldASelect, t.color || "");
+          fieldASelect.style.display = "inline-block";
+          fieldACustom.style.display = "none";
+          fieldB.value = t.count || 0;
+        } else if (ty === "clearType" || ty === "destroy") {
+          populateObjectOptions(fieldASelect, t.typeName || "");
+          // If current typeName is not within EDITOR_OBJECT_TYPES, show custom
+          if (t.typeName && !EDITOR_OBJECT_TYPES.includes(t.typeName)) {
+            fieldASelect.value = "__custom__";
+            fieldACustom.style.display = "inline-block";
+            fieldACustom.value = t.typeName;
+          } else {
+            fieldASelect.style.display = "inline-block";
+            fieldACustom.style.display = "none";
+            fieldACustom.value = "";
+          }
+          fieldB.value = t.count || 0;
+        }
+      }
+
+      typeSel.addEventListener("change", () => {
+        updateFields();
+      });
+
+      // fieldASelect change handler (to show custom input when needed)
+      fieldASelect.addEventListener("change", () => {
+        if (fieldASelect.value === "__custom__") {
+          fieldACustom.style.display = "inline-block";
+        } else {
+          fieldACustom.style.display = "none";
+        }
+      });
+
+      const removeT = document.createElement("button");
+      removeT.className = "editor-button";
+      removeT.textContent = "删除目标";
+      removeT.addEventListener("click", () => {
+        arr.splice(idx, 1);
+        renderTargetsEditor(arr);
+      });
+
+      row.appendChild(typeSel);
+      row.appendChild(fieldASelect);
+      row.appendChild(fieldACustom);
+      row.appendChild(fieldB);
+      row.appendChild(removeT);
+
+      // Keep references for saving later
+      row._get = () => {
+        const ty = typeSel.value;
+        const b = Number(fieldB.value) || 0;
+        if (ty === "score") return { type: "score", count: b };
+        if (ty === "collect") {
+          const col = fieldASelect.value || fieldACustom.value.trim() || "";
+          return { type: "collect", color: col, count: b };
+        }
+        // clearType or destroy
+        const typeName =
+          fieldASelect.value === "__custom__"
+            ? fieldACustom.value.trim()
+            : fieldASelect.value || fieldACustom.value.trim();
+        return { type: ty, typeName: typeName, count: b };
+      };
+
+      targetsContainer.appendChild(row);
+      updateFields();
+    });
+  }
+
+  const addTargetBtn = document.createElement("button");
+  addTargetBtn.className = "editor-button";
+  addTargetBtn.textContent = "添加目标";
+  addTargetBtn.type = "button";
+  addTargetBtn.addEventListener("click", () => {
+    currentDraft.targets = currentDraft.targets || [];
+    currentDraft.targets.push({ type: "score", count: 1000 });
+    renderTargetsEditor(currentDraft.targets);
+  });
+
+  // Bottom controls
+  const actions = document.createElement("div");
+  actions.className = "editor-actions";
+
+  const applyBtn = document.createElement("button");
+  applyBtn.className = "editor-button";
+  applyBtn.textContent = "保存到内存";
+  applyBtn.type = "button";
+  applyBtn.addEventListener("click", () => {
+    // validation & write back
+    if (selectedIndex == null) return alert("请先选择一个关卡或新建");
+    const lvl = window.LEVELS[selectedIndex];
+    // basic validation
+    const name = nameInput.value.trim();
+    if (!name) return alert("关卡名称不能为空");
+
+    // validate star thresholds are non-decreasing
+    const starVals = starInputs.map((s) => Math.max(0, Number(s.value) || 0));
+    for (let i = 1; i < starVals.length; i++) {
+      if (starVals[i] < starVals[i - 1])
+        return alert("星级阈值应为非降序（从低到高）");
+    }
+
+    // targets validation
+    const rows = Array.from(targetsContainer.children);
+    const newTargets = rows.map((r) => r._get());
+    for (const t of newTargets) {
+      if (!t.type) return alert("目标类型非法");
+      if (typeof t.count !== "number" || isNaN(t.count) || t.count < 0)
+        return alert("目标的 count 必须为非负数");
+      // For collect/clearType/destroy: if count>0 then require identifier
+      if (t.type === "collect" && t.count > 0 && !(t.color && t.color.length))
+        return alert("收集目标在数量大于 0 时必须指定颜色（例如 red）");
+      if (
+        (t.type === "clearType" || t.type === "destroy") &&
+        t.count > 0 &&
+        !(t.typeName && t.typeName.length)
+      )
+        return alert(
+          "清除/摧毁类目标在数量大于 0 时必须指定对象类型（例如 rock）"
+        );
+    }
+
+    lvl.name = name;
+    lvl.unlocked = unlockedInput.checked;
+    lvl.moves = Math.max(1, Number(movesInput.value) || 1);
+    lvl.targetScore = Math.max(0, Number(targetScoreInput.value) || 0);
+    lvl.description = descInput.value;
+    lvl.stars = starVals;
+    lvl.thumbnail = currentDraft.thumbnail || lvl.thumbnail || "";
+    lvl.targets = newTargets;
+
+    // refresh list and keep selection
+    renderLevelList();
+    selectLevelByIndex(selectedIndex);
+
+    // notify listeners and re-render menu
+    document.dispatchEvent(
+      new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
+    );
+    renderLevelMenu();
+    alert(
+      "已将修改保存到内存（若需持久化，请点击 Export 下载 JSON 并替换项目文件）。"
+    );
+  });
+
+  const exportBtn = document.createElement("button");
+  exportBtn.textContent = "Export JSON";
+  exportBtn.type = "button";
+  exportBtn.addEventListener("click", () => {
+    const data = JSON.stringify(window.LEVELS, null, 2);
+    const blob = new Blob([data], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "levels-export.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  const importInput = document.createElement("input");
+  importInput.type = "file";
+  importInput.accept = ".json,application/json";
+  importInput.addEventListener("change", (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!Array.isArray(parsed)) throw new Error("文件顶层应为数组");
+        window.LEVELS = parsed;
+        renderLevelList();
+        renderLevelMenu();
+        alert("已导入 JSON 并更新内存中的关卡列表");
+      } catch (err) {
+        alert("导入失败：" + err.message);
+      }
+    };
+    fr.readAsText(f, "utf-8");
+  });
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "关闭";
+  closeBtn.type = "button";
+  closeBtn.addEventListener("click", () => {
+    overlay.classList.add("hidden");
+  });
+
+  actions.appendChild(applyBtn);
+  actions.appendChild(exportBtn);
+  actions.appendChild(importInput);
+  actions.appendChild(clearThumbBtn);
+  actions.appendChild(closeBtn);
+
+  // Build form layout
+  form.appendChild(labeled("ID", idInput));
+  form.appendChild(labeled("名称", nameInput));
+  form.appendChild(
+    (() => {
+      const w = document.createElement("div");
+      w.appendChild(unlockedInput);
+      w.appendChild(document.createTextNode(" 解锁"));
+      return w;
+    })()
+  );
+  form.appendChild(labeled("步数 (moves)", movesInput));
+  form.appendChild(labeled("分数目标 (targetScore)", targetScoreInput));
+  form.appendChild(labeled("描述", descInput));
+  form.appendChild(labeled("星级阈值 (从低到高)", starsRow));
+
+  const thumbWrap = document.createElement("div");
+  thumbWrap.appendChild(thumbPreview);
+  thumbWrap.appendChild(thumbInput);
+  form.appendChild(
+    labeled("缩略图 (会以 DataURL 存入 thumbnail 字段)", thumbWrap)
+  );
+
+  form.appendChild(document.createElement("hr"));
+  form.appendChild(document.createTextNode("目标 (targets) :"));
+  form.appendChild(targetsContainer);
+  form.appendChild(addTargetBtn);
+
+  form.appendChild(actions);
+  right.appendChild(form);
+
+  panel.appendChild(left);
+  panel.appendChild(right);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  // state
+  let selectedIndex = null;
+  let currentDraft = {};
+
+  function clearForm() {
+    idInput.value = "";
+    nameInput.value = "";
+    unlockedInput.checked = false;
+    movesInput.value = "";
+    targetScoreInput.value = "";
+    descInput.value = "";
+    starInputs.forEach((s) => (s.value = ""));
+    thumbPreview.src = "";
+    targetsContainer.innerHTML = "";
+    currentDraft = {};
+  }
+
+  function populateForm(idx) {
+    const lvl = window.LEVELS[idx];
+    if (!lvl) return;
+    selectedIndex = idx;
+    currentDraft = JSON.parse(JSON.stringify(lvl));
+    idInput.value = lvl.id;
+    nameInput.value = lvl.name || "";
+    unlockedInput.checked = !!lvl.unlocked;
+    movesInput.value = lvl.moves || 20;
+    targetScoreInput.value =
+      lvl.targetScore ||
+      (lvl.targets && lvl.targets.find((t) => t.type === "score")?.count) ||
+      0;
+    descInput.value = lvl.description || "";
+    const sarr = Array.isArray(lvl.stars) ? lvl.stars : [];
+    for (let i = 0; i < 3; i++) starInputs[i].value = sarr[i] || 0;
+    thumbPreview.src = lvl.thumbnail || "";
+    currentDraft.thumbnail = lvl.thumbnail || "";
+    currentDraft.targets = Array.isArray(lvl.targets)
+      ? JSON.parse(JSON.stringify(lvl.targets))
+      : [];
+    renderTargetsEditor(currentDraft.targets);
+  }
+
+  function selectLevelByIndex(idx) {
+    // highlight in list
+    const items = Array.from(list.children);
+    items.forEach((it, i) => {
+      if (i === idx) it.classList.add("selected");
+      else it.classList.remove("selected");
+    });
+    if (idx != null) populateForm(idx);
+  }
+
+  function renderLevelList() {
+    list.innerHTML = "";
+    (window.LEVELS || []).forEach((l, i) => {
+      const it = document.createElement("div");
+      it.className = "editor-list-item";
+      it.textContent = `${l.id}. ${l.name || "未命名"}`;
+      it.addEventListener("click", () => {
+        selectLevelByIndex(i);
+      });
+      list.appendChild(it);
+    });
+  }
+
+  // initial render
+  renderLevelList();
+
+  // expose helper to outside for tests
+  window._openLevelEditor_internal = { renderLevelList };
+}
+
+function hideMenu() {
+  const overlay = document.getElementById("menu-overlay");
+  if (!overlay) return;
+  overlay.classList.add("hidden");
+  overlay.setAttribute("aria-hidden", "true");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Hook up menu buttons
+  const openBtn = document.getElementById("open-menu-btn");
+  const closeBtn = document.getElementById("btn-close-menu");
+  const levelsBtn = document.getElementById("btn-levels");
+  const backBtn = document.getElementById("btn-back-to-main");
+
+  if (openBtn) openBtn.addEventListener("click", () => showMenu());
+  if (closeBtn) closeBtn.addEventListener("click", () => hideMenu());
+  if (backBtn)
+    backBtn.addEventListener("click", () => {
+      const panel = document.getElementById("level-panel");
+      if (panel) panel.classList.add("hidden");
+    });
+  if (levelsBtn)
+    levelsBtn.addEventListener("click", () => {
+      const panel = document.getElementById("level-panel");
+      if (panel) panel.classList.remove("hidden");
+      try {
+        // 插入设置行（仅插入一次）
+        if (panel && !document.getElementById("auto-jump-toggle")) {
+          const settingsRow = document.createElement("div");
+          settingsRow.className = "menu-settings";
+          settingsRow.innerHTML = `
+            <label class="settings-item">
+              <input id="auto-jump-toggle" type="checkbox"> 自动跳转下一关（完成关卡后自动进入下一关）
+            </label>
+            <button id="open-level-editor" class="settings-item">关卡编辑器</button>
+            `;
+          panel.insertBefore(settingsRow, panel.firstChild);
+          const cb = document.getElementById("auto-jump-toggle");
+          if (cb) {
+            cb.checked = !!(
+              window.GameSettings && window.GameSettings.autoJumpNext
+            );
+            cb.addEventListener("change", (e) => {
+              window.GameSettings = window.GameSettings || {};
+              window.GameSettings.autoJumpNext = !!e.target.checked;
+              saveSettings();
+            });
+          }
+          // Hook up editor button
+          const editorBtn = document.getElementById("open-level-editor");
+          if (editorBtn) {
+            editorBtn.addEventListener("click", () => {
+              try {
+                openLevelEditor();
+              } catch (e) {
+                console.warn("打开关卡编辑器失败", e);
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("插入设置控件失败", e);
+      }
+      renderLevelMenu();
+    });
+
+  // If levels are already loaded, render menu content quietly
+  if (Array.isArray(window.LEVELS) && window.LEVELS.length) {
+    renderLevelMenu();
+  }
+
+  // Listen for levelsLoaded event
+  document.addEventListener("levelsLoaded", (e) => {
+    renderLevelMenu();
+  });
+});

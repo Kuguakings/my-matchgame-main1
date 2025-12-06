@@ -1,0 +1,151 @@
+[
+  {
+    "id": 1,
+    "name": "入门练习",
+    "unlocked": true,
+    "moves": 25,
+    "targetScore": 5000,
+    "targets": [{ "type": "score", "count": 5000 }],
+    "theme": "plain",
+    "stars": [3000, 6000, 10000],
+    "thumbnail": "",
+    "description": "熟悉基础匹配与消除规则。",
+    "specialRules": {}
+  },
+  {
+    "id": 2,
+    "name": "色块收集 I",
+    "unlocked": false,
+    "moves": 20,
+    "targets": [{ "type": "collect", "color": "red", "count": 10 }],
+    "theme": "forest",
+    "stars": [4000, 8000, 12000],
+    "thumbnail": "",
+    "description": "收集 10 个红色方块。",
+    "specialRules": {}
+  },
+  {
+    "id": 3,
+    "name": "障碍与重力",
+    "unlocked": false,
+    "moves": 22,
+    "targets": [{ "type": "destroy", "typeName": "rock", "count": 6 }],
+    "theme": "cave",
+    "stars": [5000, 10000, 15000],
+    "thumbnail": "",
+    "description": "清除地图上的岩石障碍。",
+    "specialRules": {}
+  },
+  {
+    "id": 4,
+    "name": "时间试炼",
+    "unlocked": false,
+    "moves": 18,
+    "targetScore": 15000,
+    "targets": [{ "type": "score", "count": 15000 }],
+    "theme": "storm",
+    "stars": [8000, 12000, 20000],
+    "thumbnail": "",
+    "description": "在有限步数内获取高分。",
+    "specialRules": {}
+  },
+  {
+    "id": 5,
+    "name": "黄色电力 I",
+    "unlocked": false,
+    "moves": 20,
+    "targets": [{ "type": "collect", "color": "yellow", "count": 8 }],
+    "theme": "lab",
+    "stars": [6000, 11000, 16000],
+    "thumbnail": "",
+    "description": "触发黄色电力链以制造爆发。",
+    "specialRules": {}
+  },
+  {
+    "id": 6,
+    "name": "白色冻结 I",
+    "unlocked": false,
+    "moves": 24,
+    "targets": [{ "type": "clearType", "typeName": "frozen", "count": 12 }],
+    "theme": "ice",
+    "stars": [7000, 13000, 19000],
+    "thumbnail": "",
+    "description": "解冻并清除冰冻方块。",
+    "specialRules": {}
+  },
+  {
+    "id": 7,
+    "name": "融合核心 I",
+    "unlocked": false,
+    "moves": 20,
+    "targets": [{ "type": "destroy", "typeName": "fusion-core", "count": 1 }],
+    "theme": "core",
+    "stars": [9000, 15000, 22000],
+    "thumbnail": "",
+    "description": "触发并引爆融合核心。",
+    "specialRules": {}
+  },
+  {
+    "id": 8,
+    "name": "连锁挑战",
+    "unlocked": false,
+    "moves": 18,
+    "targets": [{ "type": "score", "count": 20000 }],
+    "theme": "voltage",
+    "stars": [10000, 17000, 25000],
+    "thumbnail": "",
+    "description": "制造尽可能长的连锁。",
+    "specialRules": {}
+  },
+  {
+    "id": 9,
+    "name": "色彩控制",
+    "unlocked": false,
+    "moves": 22,
+    "targets": [{ "type": "collect", "color": "purple", "count": 12 }],
+    "theme": "mystic",
+    "stars": [8000, 14000, 21000],
+    "thumbnail": "",
+    "description": "利用紫色转换获得胜利。",
+    "specialRules": {}
+  },
+  {
+    "id": 10,
+    "name": "复杂地形",
+    "unlocked": false,
+    "moves": 20,
+    "targets": [{ "type": "clearType", "typeName": "blocker", "count": 10 }],
+    "theme": "ruins",
+    "stars": [9000, 16000, 23000],
+    "thumbnail": "",
+    "description": "清除地图上的特殊障碍。",
+    "specialRules": {}
+  },
+  {
+    "id": 11,
+    "name": "终极电力",
+    "unlocked": false,
+    "moves": 16,
+    "targets": [
+      { "type": "collect", "color": "yellow", "count": 20 },
+      { "type": "score", "count": 30000 }
+    ],
+    "theme": "reactor",
+    "stars": [15000, 24000, 35000],
+    "thumbnail": "",
+    "description": "结合电力与分数目标。",
+    "specialRules": {}
+  },
+  {
+    "id": 12,
+    "name": "大师试炼",
+    "unlocked": false,
+    "moves": 14,
+    "targets": [{ "type": "score", "count": 40000 }],
+    "theme": "void",
+    "stars": [20000, 32000, 48000],
+    "thumbnail": "",
+    "description": "最高难度，考验连锁与策略。",
+    "specialRules": {}
+  }
+]

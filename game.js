@@ -2201,8 +2201,16 @@ async function handleWhiteMatch4(removalSet) {
   - 用于计算冰冻链式反应（同时破碎的冰冻集团）。
 */
 function getConnectedFrozenTiles(r, c, connectedSet) {
+  // 边界检查和安全检查
+  if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
+  
   const key = `${r},${c}`;
   if (connectedSet.has(key)) return;
+  
+  const tile = board[r][c];
+  // 确保方块存在且是冰冻状态
+  if (!tile || tile.state !== "frozen") return;
+  
   connectedSet.add(key);
 
   const neighbors = [
@@ -2213,9 +2221,11 @@ function getConnectedFrozenTiles(r, c, connectedSet) {
   ];
 
   for (const n of neighbors) {
+    // 添加边界检查
     if (n.r >= 0 && n.r < GRID_SIZE && n.c >= 0 && n.c < GRID_SIZE) {
-      const tile = board[n.r][n.c];
-      if (tile && tile.state === "frozen") {
+      const neighborTile = board[n.r][n.c];
+      // 确保邻居方块存在且是冰冻状态
+      if (neighborTile && neighborTile.state === "frozen") {
         getConnectedFrozenTiles(n.r, n.c, connectedSet);
       }
     }
@@ -2229,6 +2239,11 @@ function getConnectedFrozenTiles(r, c, connectedSet) {
   - 返回波次数组，用于 animateGravity 中的延迟破碎视觉效果（每波间隔 100ms）。
 */
 function buildFrozenRemovalWaves(baseRemovalSet) {
+  // 波次为空的情况处理
+  if (!baseRemovalSet || baseRemovalSet.size === 0) {
+    return [];
+  }
+  
   // wave0 = 当前要消除的所有块（已在 finalRemovalSet 中）
   const waves = [];
   const allRemoved = new Set(baseRemovalSet);
@@ -2245,13 +2260,21 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
   waves.push(setToList(prevWave));
 
   // 继续寻找因邻接而破碎的冰冻块（条件A/B）
-  while (true) {
+  // 添加最大迭代次数防止无限循环
+  let iterations = 0;
+  const maxIterations = 100;
+  
+  while (iterations < maxIterations) {
+    iterations++;
     const nextWaveSet = new Set();
+    
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
         const key = `${r},${c}`;
         if (allRemoved.has(key)) continue;
+        
         const tile = board[r][c];
+        // 确保方块存在且是冰冻状态
         if (!tile || tile.state !== "frozen") continue;
 
         const neighbors = [
@@ -2260,7 +2283,9 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
           `${r},${c - 1}`,
           `${r},${c + 1}`,
         ];
+        
         for (const n of neighbors) {
+          // 检查邻居是否在前一波中
           if (prevWave.has(n)) {
             nextWaveSet.add(key);
             break;
@@ -2269,7 +2294,10 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
       }
     }
 
+    // 如果没有更多的波次，结束循环
     if (nextWaveSet.size === 0) break;
+    
+    // 添加到已移除集合和波次列表
     nextWaveSet.forEach((k) => allRemoved.add(k));
     waves.push(setToList(nextWaveSet));
     prevWave = nextWaveSet;
@@ -2288,12 +2316,14 @@ async function handleFrozenShatter(r, c) {
   for (let i = r - 1; i <= r + 1; i++) {
     for (let j = c - 1; j <= c + 1; j++) {
       if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE && board[i][j]) {
-        if (
-          board[i][j].color === "white" &&
-          board[i][j].state !== "frozen" &&
-          board[i][j].type !== "gold"
-        ) {
-          applyFreeze(board[i][j]);
+        // 添加额外的安全检查，确保方块存在且有效
+        const tile = board[i][j];
+        if (tile && 
+            tile.color === "white" &&
+            tile.state !== "frozen" &&
+            tile.type !== "gold" &&
+            tile.type !== "fusion-core") {
+          applyFreeze(tile);
         }
       }
     }

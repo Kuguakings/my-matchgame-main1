@@ -94,3 +94,62 @@ document.addEventListener("DOMContentLoaded", () => {
     loadLevels().catch(console.error);
   }, 1000);
 });
+
+function saveGameState() {
+  const state = {
+    level: level,
+    board: board.map(row => row.map(tile => ({
+      id: tile.id,
+      color: tile.color,
+      type: tile.type,
+      state: tile.state,
+      voltage: tile.voltage,
+      durability: tile.durability
+    }))),
+    score: score,
+    targetScore: targetScore,
+    levelTargets: { ...levelTargets },
+    timestamp: Date.now()
+  };
+  
+  localStorage.setItem(`${LEVEL_STATE_KEY_PREFIX}${level}`, JSON.stringify(state));
+}
+
+function loadGameState() {
+  const savedState = localStorage.getItem(`${LEVEL_STATE_KEY_PREFIX}${level}`);
+  if (!savedState) return false;
+  
+  const state = JSON.parse(savedState);
+  // 检查是否过期（24小时）
+  if (Date.now() - state.timestamp > 24 * 60 * 60 * 1000) {
+    localStorage.removeItem(`${LEVEL_STATE_KEY_PREFIX}${level}`);
+    return false;
+  }
+  
+  level = state.level;
+  board = state.board.map(row => row.map(tile => ({
+    ...tile,
+    id: nextTileId++
+  })));
+  score = state.score;
+  targetScore = state.targetScore;
+  levelTargets = { ...state.levelTargets };
+  
+  updateTargetUI();
+  updateUI();
+  renderBoard();
+  return true;
+}
+
+function initGame() {
+  // 尝试加载游戏状态
+  if (loadGameState()) {
+    console.log("Loaded game state for level", level);
+  } else {
+    // 如果没有保存状态，初始化新游戏
+    createBoard();
+    updateTargetUI();
+    updateUI();
+    renderBoard();
+  }
+}

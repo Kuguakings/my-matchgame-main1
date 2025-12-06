@@ -10,7 +10,7 @@
 const GAME_VERSION = "12.5.23.00";
 
 const GRID_SIZE = 9;
-const COLORS = ["红色", "蓝色", "绿色", "紫色", "白色", "橙色", "黄色"];
+const COLORS = ["red", "blue", "green", "purple", "white", "orange", "yellow"];
 let board = [];
 let score = 0;
 let level = 1;
@@ -30,13 +30,13 @@ const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
 
 // 修改颜色权重配置
 const COLOR_WEIGHTS = {
-  "红色": 18,
-  "蓝色": 18,
-  "绿色": 18,
-  "紫色": 18,
-  "白色": 18,
-  "橙色": 5,
-  "黄色": 5
+  "red": 18,
+  "blue": 18,
+  "green": 18,
+  "purple": 18,
+  "white": 18,
+  "orange": 5,
+  "yellow": 5
 };
 
 const gridContainer = document.getElementById("grid-container");
@@ -142,6 +142,16 @@ function getWeightedRandomColor() {
     r -= weight;
   }
   return COLORS[0];
+}
+
+/*
+  applyFreeze(tile)
+  - 将指定 tile 标记为 frozen（冰冻），金块（gold）免疫。
+  - 仅修改 tile.state，不直接操作 DOM；renderBoard 会据此添加 class 以显示效果。
+*/
+function applyFreeze(tile) {
+  if (tile.type === "gold") return; // Gold tiles are immune to freezing
+  tile.state = "frozen";
 }
 
 /*
@@ -436,21 +446,12 @@ function createBoard(initialLayout = null) {
   - 返回值为 COLORS 数组内的一项。
 */
 function getWeightedRandomColor() {
-  const weights = {
-    red: 18,
-    blue: 18,
-    green: 18,
-    purple: 18,
-    white: 18,
-    orange: 5,
-    yellow: 5,
-  };
-  const totalWeight = 100;
+  const totalWeight = Object.values(COLOR_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
   let r = Math.random() * totalWeight;
-  for (const color of COLORS) {
-    let w = weights[color] || 0;
-    if (r < w) return color;
-    r -= w;
+  
+  for (const [color, weight] of Object.entries(COLOR_WEIGHTS)) {
+    if (r < weight) return color;
+    r -= weight;
   }
   return COLORS[0];
 }

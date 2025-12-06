@@ -1515,7 +1515,7 @@ async function handleRedMatch4(removalSet) {
     }
   }
   allReds.sort(() => 0.5 - Math.random());
-  const selected = allReds.slice(0, 3);
+  const selected = allReds.slice(0, Math.ceil(allReds.length * 0.5)); // 选择50%的红色方块
 
   for (const red of selected) {
     // Visual cue for activation
@@ -1583,7 +1583,7 @@ async function handleGreenMatch3(r, c, isHorizontal, removalSet) {
 
   if (isGreen(side1) || isGreen(side2)) {
     // Skill Fails: Normal match only
-    return;
+    return false;
   } else {
     // Skill Success: Eliminate both sides if they exist
     [side1, side2].forEach((pos) => {
@@ -1599,6 +1599,7 @@ async function handleGreenMatch3(r, c, isHorizontal, removalSet) {
         showVFX(pos.r, pos.c, "wind-slash", isHorizontal ? "col" : "row");
       }
     });
+    return true;
   }
 }
 
@@ -1875,7 +1876,7 @@ async function handlePurpleMatch3(r, c, matchGroupTiles) {
     }
   }
 
-  if (areaTiles.length === 0) return;
+  if (areaTiles.length === 0) return false;
 
   // 2. Find Most Frequent Color in 3x3 (Excluding match group)
   let modeColor = null;
@@ -1889,7 +1890,7 @@ async function handlePurpleMatch3(r, c, matchGroupTiles) {
     }
   }
 
-  if (!modeColor) return;
+  if (!modeColor) return false;
 
   // 3. Select Target from 3x3
   // "Random block... excluding the 3 purples... AND that most frequent block"
@@ -1898,7 +1899,7 @@ async function handlePurpleMatch3(r, c, matchGroupTiles) {
     (t) => board[t.r][t.c].color !== modeColor
   );
 
-  if (validTargets.length === 0) return;
+  if (validTargets.length === 0) return false;
 
   const target = validTargets[Math.floor(Math.random() * validTargets.length)];
 
@@ -1919,6 +1920,8 @@ async function handlePurpleMatch3(r, c, matchGroupTiles) {
     cell.style.transform = "scale(1)";
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
+  
+  return true;
 }
 
 /*
@@ -1942,7 +1945,9 @@ async function handlePurpleMatch4() {
     const target = purples[Math.floor(Math.random() * purples.length)];
     board[target.r][target.c].state = "bright-purple";
     renderBoard();
+    return true;
   }
+  return false;
 }
 
 /*
@@ -2030,6 +2035,7 @@ async function handleWhiteMatch3(tiles) {
     }
   });
   renderBoard();
+  return true;
 }
 
 /*
@@ -2119,6 +2125,7 @@ async function handleWhiteMatch4(removalSet) {
     });
   });
   renderBoard();
+  return true;
 }
 
 // Recursive Flood Fill for Frozen Chain Reaction
@@ -2248,7 +2255,7 @@ async function handleOrangeMatch3(r, c) {
     }
   }
 
-  if (targets.length === 0) return;
+  if (targets.length === 0) return false;
 
   // Pick exactly 1
   const target = targets[Math.floor(Math.random() * targets.length)];
@@ -2274,6 +2281,8 @@ async function handleOrangeMatch3(r, c) {
 
   renderBoard();
   await new Promise((resolve) => setTimeout(resolve, 300));
+  
+  return true;
 }
 
 /*
@@ -2781,10 +2790,8 @@ async function transmuteTile(r, c) {
   renderBoard();
 }
 
-// 已移除：文件中存在一个简化版的 dischargeLightning(startR, startC) 实现，
-// 它会覆盖上方更通用的 dischargeLightning(originR, originC, count, rangeRadius, context) 函数。
-// 为避免功能被意外覆盖，此处移除该重复定义，程序将使用上方的通用实现。
-// 若需要保留一个简化别名，可在此处添加包装函数调用通用实现。
+/*
+  handleOrangeMatch4()
 
 /*
   handleOrangeMatch4()
@@ -2816,7 +2823,7 @@ async function handleOrangeMatch4() {
     }
   }
 
-  if (!targetColor || !potentialTargets[targetColor]) return;
+  if (!targetColor || !potentialTargets[targetColor]) return false;
 
   if (typeof audio !== "undefined" && audio.playSiren) audio.playSiren();
 
@@ -2851,6 +2858,7 @@ async function handleOrangeMatch4() {
   });
 
   await new Promise((resolve) => setTimeout(resolve, 500));
+  return true;
 }
 
 // ==========================================

@@ -7,12 +7,15 @@ if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
 }
 
+// 在API中添加权重配置支持
 export default async function handler(req, res) {
-  // 设置 CORS 和缓存控制
+  // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // 防止缓存
+  
+  // 禁用缓存
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
@@ -55,68 +58,39 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { level_data } = req.body;
+      const { levels } = req.body;
 
-      // 插入新关卡到 Supabase
-      const { data, error } = await supabase
-        .from('levels')
-        .insert([{ level_data }])
-        .select();
+      if (!Array.isArray(levels)) {
+        return res.status(400).json({
+          success: false,
+          error: 'levels 必须是数组'
+        });
+      }
 
-      if (error) throw error;
-
-      return res.status(200).json({
-        success: true,
-        level: data[0]
-      });
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message
-      });
-    }
-  }
-
-  if (req.method === 'PUT') {
-    try {
-      const { id, level_data } = req.body;
-
-      // 更新关卡数据
-      const { data, error } = await supabase
-        .from('levels')
-        .update({ level_data })
-        .eq('id', id)
-        .select();
-
-      if (error) throw error;
-
-      return res.status(200).json({
-        success: true,
-        level: data[0]
-      });
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        error: error.message
-      });
-    }
-  }
-
-  if (req.method === 'DELETE') {
-    try {
-      const { id } = req.body;
-
-      // 删除关卡
-      const { data, error } = await supabase
+      // 删除所有现有关卡（简单策略，也可以使用更新策略）
+      const { error: deleteError } = await supabase
         .from('levels')
         .delete()
-        .eq('id', id);
+        .neq('id', 0); // 删除所有记录
+
+      if (deleteError) throw deleteError;
+
+      // 插入新关卡
+      const levelRows = levels.map(level => ({
+        level_data: level
+      }));
+
+      const { data, error } = await supabase
+        .from('levels')
+        .insert(levelRows)
+        .select();
 
       if (error) throw error;
 
       return res.status(200).json({
         success: true,
-        message: '关卡已删除'
+        message: '关卡已保存到数据库',
+        count: data.length
       });
     } catch (error) {
       return res.status(500).json({
@@ -128,6 +102,6 @@ export default async function handler(req, res) {
 
   return res.status(405).json({
     success: false,
-    error: '方法不被允许'
+    error: '不支持的请求方法'
   });
 }

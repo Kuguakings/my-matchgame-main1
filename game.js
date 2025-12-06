@@ -25,6 +25,9 @@ let nextTileId = 0; // Unique ID for animations
 // Level 3+: Scale up
 let levelTargets = {}; // { color: count }
 
+// 游戏状态保存相关常量
+const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
+
 const gridContainer = document.getElementById("grid-container");
 const scoreDisplay = document.getElementById("score");
 const levelDisplay = document.getElementById("level");
@@ -57,6 +60,15 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     { once: true }
   );
+  
+  // 在用户离开页面时保存游戏状态
+  window.addEventListener('beforeunload', () => {
+    // 在用户离开页面时保存游戏状态
+    if (level && board) {
+      saveGameState();
+    }
+  });
+  
   // Load user settings and levels BEFORE starting the first level.
   try {
     loadSettings();
@@ -3068,6 +3080,8 @@ function checkLevelProgress() {
         // 持久化当前进度（包括可能更新的 _stars）
         try {
           saveProgress();
+          // 清除保存的游戏状态，因为关卡已完成
+          clearGameState(level);
         } catch (e) {
           /* noop */
         }
@@ -3096,6 +3110,8 @@ function checkLevelProgress() {
       // 持久化进度并刷新菜单（如存在 renderLevelMenu）
       try {
         saveProgress();
+        // 清除保存的游戏状态，因为关卡已完成
+        clearGameState(level);
       } catch (e) {
         /* noop */
       }
@@ -3248,6 +3264,98 @@ function saveProgress() {
   }
 }
 
+/*
+  saveGameState()
+  - 保存当前游戏状态到 localStorage，包括棋盘、分数等
+*/
+function saveGameState() {
+  try {
+    // 只有在游戏进行中才保存状态
+    if (!level || !board) return;
+    
+    const gameState = {
+      level: level,
+      score: score,
+      board: board,
+      levelTargets: levelTargets,
+      targetScore: targetScore,
+      savedAt: Date.now()
+    };
+    
+    const key = LEVEL_STATE_KEY_PREFIX + level;
+    localStorage.setItem(key, JSON.stringify(gameState));
+    console.log(`游戏状态已保存: 关卡 ${level}`);
+  } catch (err) {
+    console.warn("保存游戏状态失败：", err);
+  }
+}
+
+/*
+  loadGameState(levelId)
+  - 从 localStorage 加载指定关卡的游戏状态
+*/
+function loadGameState(levelId) {
+  try {
+    const key = LEVEL_STATE_KEY_PREFIX + levelId;
+    const savedState = localStorage.getItem(key);
+    if (!savedState) return null;
+    
+    const state = JSON.parse(savedState);
+    
+    // 检查状态是否有效（例如不超过一天）
+    const oneDay = 24 * 60 * 60 * 1000;
+    if (Date.now() - state.savedAt > oneDay) {
+      // 状态过期，清除它
+      clearGameState(levelId);
+      return null;
+    }
+    
+    return state;
+  } catch (err) {
+    console.warn("加载游戏状态失败：", err);
+    return null;
+  }
+}
+
+/*
+  clearGameState(levelId)
+  - 清除指定关卡的保存游戏状态
+*/
+function clearGameState(levelId) {
+  try {
+    const key = LEVEL_STATE_KEY_PREFIX + levelId;
+    localStorage.removeItem(key);
+    console.log(`游戏状态已清除: 关卡 ${levelId}`);
+  } catch (err) {
+    console.warn("清除游戏状态失败：", err);
+  }
+}
+
+/*
+  restoreGameState(state)
+  - 恢复游戏状态
+*/
+function restoreGameState(state) {
+  // 恢复游戏状态
+  level = state.level;
+  score = state.score;
+  board = state.board;
+  levelTargets = state.levelTargets;
+  targetScore = state.targetScore;
+  
+  // 更新UI
+  if (levelDisplay) levelDisplay.textContent = level;
+  if (scoreDisplay) scoreDisplay.textContent = `${score} / ${targetScore}`;
+  
+  // 更新目标面板
+  updateTargetUI();
+  
+  // 渲染棋盘
+  renderBoard();
+  
+  console.log(`游戏状态已恢复: 关卡 ${level}`);
+}
+
 function getLevelById(id) {
   return window.LEVELS.find((l) => l.id === Number(id)) || null;
 }
@@ -3289,6 +3397,21 @@ function startLevel(id) {
   // normalize id
   const want = Number(id) || 1;
   const lvlDef = getLevelById(want);
+
+  // 检查是否有保存的游戏状态
+  const savedState = loadGameState(want);
+  if (savedState) {
+    // 询问用户是否继续游戏
+    const shouldContinue = confirm(`检测到关卡 ${want} 的未完成游戏进度，是否继续？`);
+    if (shouldContinue) {
+      // 恢复游戏状态
+      restoreGameState(savedState);
+      return;
+    } else {
+      // 用户选择不继续，清除保存的状态
+      clearGameState(want);
+    }
+  }
 
   // reset common runtime state
   level = want;
@@ -3450,6 +3573,7 @@ function renderLevelMenu() {
 
     const starsWrap = document.createElement("div");
     starsWrap.className = "level-stars";
+
     const maxStars = Array.isArray(l.stars) ? l.stars.length : 0;
     const achieved = l._stars || 0;
 

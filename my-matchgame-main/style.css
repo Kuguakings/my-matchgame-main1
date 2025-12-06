@@ -1,0 +1,57 @@
+/* ... existing code ... */
+.level-editor {
+  background-color: #f0f0f0;
+  padding: 20px;
+  border-radius: 10px;
+  margin: 20px 0;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.editor-controls {
+  margin-top: 20px;
+}
+
+.weight-controls {
+  background-color: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.weight-slider {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weight-slider label {
+  font-weight: bold;
+  width: 60px;
+}
+
+.weight-slider input[type="range"] {
+  flex-grow: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #4CAF50 0%, #4CAF50 50%, #e91e63 50%, #e91e63 100%);
+}
+
+.weight-slider input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+}
+
+.weight-slider input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+}
+
+/* ... existing code ... */

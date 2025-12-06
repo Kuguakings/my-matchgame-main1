@@ -1,3 +1,27 @@
+const COLORS = ["红色", "蓝色", "绿色", "紫色", "白色", "橙色", "黄色"];
+
+// 修改颜色权重配置
+const COLOR_WEIGHTS = {
+  "红色": 18,
+  "蓝色": 18,
+  "绿色": 18,
+  "紫色": 18,
+  "白色": 18,
+  "橙色": 5,
+  "黄色": 5
+};
+
+function getWeightedRandomColor() {
+  const totalWeight = Object.values(COLOR_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
+  let r = Math.random() * totalWeight;
+  
+  for (const [color, weight] of Object.entries(COLOR_WEIGHTS)) {
+    if (r < weight) return color;
+    r -= weight;
+  }
+  return COLORS[0];
+}
+
 // 确保上传函数正确调用
 async function uploadLevels() {
   try {

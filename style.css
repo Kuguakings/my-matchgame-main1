@@ -764,6 +764,30 @@ body {
   color: #999;
 }
 
+.batch-mode-toggle {
+  border-bottom: 1px solid #333;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.batch-mode-toggle label {
+  user-select: none;
+}
+
+#board-editor-container div[data-color] {
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+#board-editor-container div[data-color]:hover {
+  transform: scale(1.05);
+  z-index: 1;
+  position: relative;
+}
+
+#board-editor-container div[data-color]:active {
+  transform: scale(0.95);
+}
+
 @keyframes vortex-implode {
   0% {
     transform: translate(-50%, -50%) scale(0) rotate(0deg);

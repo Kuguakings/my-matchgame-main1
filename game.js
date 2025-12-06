@@ -1,11 +1,13 @@
 // ==========================================
 // 【版本号管理】版本格式: MM.dd.HH.mm (月.日.小时.分钟)
 // ⚠️ 每次修改代码时，必须更新下方版本号！
-// 当前版本：v12.5.22.00 (2025年12月5日 22:00 修改)
+// 当前版本：v12.5.23.00 (2025年12月5日 23:00 修改)
 // 历史版本：
+//   - v12.5.23.00: 关卡编辑器全面完善（2025-12-05 23:00）- 添加游戏板布局编辑器、预览功能、撤销/重做、批量操作
+//   - v12.5.22.30: 关卡编辑器完善（2025-12-05 22:30）- 添加 theme/specialRules 编辑、复制、排序、导入验证、UX 优化
 //   - v12.5.22.00: 初版（2025-12-05 22:00）- 特效增强 + 版本号系统添加
 // ==========================================
-const GAME_VERSION = "12.5.22.00";
+const GAME_VERSION = "12.5.23.00";
 
 const GRID_SIZE = 9;
 const COLORS = ["red", "blue", "green", "purple", "white", "orange", "yellow"];
@@ -266,12 +268,73 @@ function updateTargetUI() {
 }
 
 /*
-  createBoard()
+  createBoard(initialLayout)
   - 初始化并返回一个新的棋盘（写入全局 board 变量），避免初始三连消。
   - 每个 tile 包含字段：id, color, type, state，黄色会有 voltage 属性。
+  - 如果提供了 initialLayout（来自关卡数据的 initialBoard），则使用该布局，否则随机生成。
 */
-function createBoard() {
+function createBoard(initialLayout = null) {
   board = [];
+
+  // If initial layout provided, use it
+  if (
+    initialLayout &&
+    Array.isArray(initialLayout) &&
+    initialLayout.length === GRID_SIZE
+  ) {
+    for (let r = 0; r < GRID_SIZE; r++) {
+      let row = [];
+      const layoutRow = initialLayout[r];
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const layoutTile = layoutRow && layoutRow[c];
+        if (layoutTile && layoutTile.color) {
+          // Use provided tile
+          let newTile = {
+            id: nextTileId++,
+            color: layoutTile.color,
+            type: layoutTile.type || "normal",
+            state: layoutTile.state || "normal",
+          };
+          if (layoutTile.voltage !== undefined) {
+            newTile.voltage = layoutTile.voltage;
+          } else if (layoutTile.color === "yellow") {
+            newTile.voltage = Math.floor(Math.random() * 3) + 1;
+          }
+          if (layoutTile.durability !== undefined) {
+            newTile.durability = layoutTile.durability;
+          }
+          row.push(newTile);
+        } else {
+          // Fill empty spots with random tiles
+          let color;
+          do {
+            color = getWeightedRandomColor();
+          } while (
+            (c >= 2 &&
+              row[c - 1]?.color === color &&
+              row[c - 2]?.color === color) ||
+            (r >= 2 &&
+              board[r - 1][c]?.color === color &&
+              board[r - 2][c]?.color === color)
+          );
+          let newTile = {
+            id: nextTileId++,
+            color: color,
+            type: "normal",
+            state: "normal",
+          };
+          if (color === "yellow") {
+            newTile.voltage = Math.floor(Math.random() * 3) + 1;
+          }
+          row.push(newTile);
+        }
+      }
+      board.push(row);
+    }
+    return;
+  }
+
+  // Random generation (original logic)
   for (let r = 0; r < GRID_SIZE; r++) {
     let row = [];
     for (let c = 0; c < GRID_SIZE; c++) {
@@ -3274,7 +3337,7 @@ function startLevel(id) {
 
   // render UI and board
   updateTargetUI();
-  createBoard();
+  createBoard(lvlDef?.initialBoard);
   renderBoard();
 }
 
@@ -3507,10 +3570,10 @@ function openLevelEditor() {
       id: newId,
       name: `新关卡 ${newId}`,
       unlocked: false,
+      theme: "plain",
       moves: 20,
       targetScore: 5000,
       targets: [{ type: "score", count: 5000 }],
-      theme: "plain",
       stars: [3000, 6000, 10000],
       thumbnail: "",
       description: "",
@@ -3521,6 +3584,69 @@ function openLevelEditor() {
     renderLevelList();
     selectLevelByIndex(window.LEVELS.length - 1);
   });
+
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "editor-button";
+  copyBtn.textContent = "复制所选关卡";
+  copyBtn.addEventListener("click", () => {
+    if (selectedIndex == null) return alert("请先选择要复制的关卡");
+    const sourceLevel = window.LEVELS[selectedIndex];
+    if (!sourceLevel) return;
+
+    // Create a deep copy
+    const copiedLevel = JSON.parse(JSON.stringify(sourceLevel));
+
+    // Generate new ID (max existing ID + 1)
+    const newId =
+      (window.LEVELS || []).reduce((m, v) => Math.max(m, v.id || 0), 0) + 1;
+    copiedLevel.id = newId;
+    copiedLevel.name = (copiedLevel.name || "未命名") + " (副本)";
+    copiedLevel.unlocked = false; // 复制的关卡默认锁定
+
+    // Insert after current level
+    window.LEVELS.splice(selectedIndex + 1, 0, copiedLevel);
+    renderLevelList();
+    selectLevelByIndex(selectedIndex + 1);
+    renderLevelMenu();
+  });
+
+  // Sort controls
+  const sortControls = document.createElement("div");
+  sortControls.style.display = "flex";
+  sortControls.style.gap = "4px";
+  sortControls.style.marginTop = "4px";
+
+  const moveUpBtn = document.createElement("button");
+  moveUpBtn.className = "editor-button";
+  moveUpBtn.textContent = "↑ 上移";
+  moveUpBtn.style.flex = "1";
+  moveUpBtn.addEventListener("click", () => {
+    if (selectedIndex == null || selectedIndex === 0) return;
+    const temp = window.LEVELS[selectedIndex];
+    window.LEVELS[selectedIndex] = window.LEVELS[selectedIndex - 1];
+    window.LEVELS[selectedIndex - 1] = temp;
+    renderLevelList();
+    selectLevelByIndex(selectedIndex - 1);
+    renderLevelMenu();
+  });
+
+  const moveDownBtn = document.createElement("button");
+  moveDownBtn.className = "editor-button";
+  moveDownBtn.textContent = "↓ 下移";
+  moveDownBtn.style.flex = "1";
+  moveDownBtn.addEventListener("click", () => {
+    if (selectedIndex == null || selectedIndex >= window.LEVELS.length - 1)
+      return;
+    const temp = window.LEVELS[selectedIndex];
+    window.LEVELS[selectedIndex] = window.LEVELS[selectedIndex + 1];
+    window.LEVELS[selectedIndex + 1] = temp;
+    renderLevelList();
+    selectLevelByIndex(selectedIndex + 1);
+    renderLevelMenu();
+  });
+
+  sortControls.appendChild(moveUpBtn);
+  sortControls.appendChild(moveDownBtn);
 
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "editor-button";
@@ -3538,7 +3664,10 @@ function openLevelEditor() {
 
   left.appendChild(title);
   left.appendChild(list);
+  left.appendChild(batchControls);
   left.appendChild(addBtn);
+  left.appendChild(copyBtn);
+  left.appendChild(sortControls);
   left.appendChild(deleteBtn);
 
   // Right: form
@@ -3576,6 +3705,28 @@ function openLevelEditor() {
   targetScoreInput.min = 0;
   const descInput = document.createElement("textarea");
   descInput.rows = 3;
+  // Theme selector
+  const themeInput = document.createElement("select");
+  const themeOptions = [
+    { value: "plain", label: "普通 (plain)" },
+    { value: "forest", label: "森林 (forest)" },
+    { value: "cave", label: "洞穴 (cave)" },
+    { value: "storm", label: "风暴 (storm)" },
+    { value: "lab", label: "实验室 (lab)" },
+    { value: "ice", label: "冰霜 (ice)" },
+    { value: "core", label: "核心 (core)" },
+    { value: "voltage", label: "电压 (voltage)" },
+    { value: "mystic", label: "神秘 (mystic)" },
+    { value: "ruins", label: "废墟 (ruins)" },
+    { value: "reactor", label: "反应堆 (reactor)" },
+    { value: "void", label: "虚空 (void)" },
+  ];
+  themeOptions.forEach((opt) => {
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.label;
+    themeInput.appendChild(o);
+  });
   const starsRow = document.createElement("div");
   starsRow.style.display = "flex";
   starsRow.style.gap = "6px";
@@ -3837,14 +3988,53 @@ function openLevelEditor() {
         );
     }
 
+    // Validate and parse specialRules
+    let specialRules = {};
+    const specialRulesText = specialRulesInput.value.trim();
+    if (specialRulesText) {
+      try {
+        const parsed = JSON.parse(specialRulesText);
+        if (typeof parsed !== "object" || Array.isArray(parsed)) {
+          return alert("specialRules 必须是 JSON 对象（不能是数组或其他类型）");
+        }
+        specialRules = parsed;
+      } catch (e) {
+        return alert("specialRules JSON 格式错误：" + e.message);
+      }
+    }
+
     lvl.name = name;
     lvl.unlocked = unlockedInput.checked;
+    lvl.theme = themeInput.value || "plain";
     lvl.moves = Math.max(1, Number(movesInput.value) || 1);
     lvl.targetScore = Math.max(0, Number(targetScoreInput.value) || 0);
     lvl.description = descInput.value;
     lvl.stars = starVals;
     lvl.thumbnail = currentDraft.thumbnail || lvl.thumbnail || "";
     lvl.targets = newTargets;
+    lvl.specialRules = specialRules;
+
+    // Save initial board layout
+    const initialBoard = [];
+    let hasAnyTile = false;
+    for (let r = 0; r < GRID_SIZE; r++) {
+      const row = [];
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const cell = boardEditorCells[r * GRID_SIZE + c];
+        const color = cell.dataset.color;
+        if (color) {
+          hasAnyTile = true;
+          row.push({ color: color, type: "normal", state: "normal" });
+        } else {
+          row.push(null);
+        }
+      }
+      initialBoard.push(row);
+    }
+    lvl.initialBoard = hasAnyTile ? initialBoard : undefined;
+
+    // Save to history before applying
+    saveToHistory();
 
     // refresh list and keep selection
     renderLevelList();
@@ -3886,46 +4076,287 @@ function openLevelEditor() {
     fr.onload = (e) => {
       try {
         const parsed = JSON.parse(e.target.result);
-        if (!Array.isArray(parsed)) throw new Error("文件顶层应为数组");
+        if (!Array.isArray(parsed)) {
+          throw new Error("文件顶层应为数组格式");
+        }
+
+        // Validate each level
+        const errors = [];
+        const idSet = new Set();
+
+        parsed.forEach((level, index) => {
+          if (!level || typeof level !== "object") {
+            errors.push(`关卡 #${index + 1}: 必须是对象`);
+            return;
+          }
+
+          // Check required fields
+          if (typeof level.id !== "number" || level.id <= 0) {
+            errors.push(`关卡 #${index + 1}: id 必须是正整数`);
+          } else if (idSet.has(level.id)) {
+            errors.push(`关卡 #${index + 1}: id ${level.id} 重复`);
+          } else {
+            idSet.add(level.id);
+          }
+
+          if (typeof level.name !== "string" || !level.name.trim()) {
+            errors.push(`关卡 #${index + 1}: name 必须是非空字符串`);
+          }
+
+          if (typeof level.moves !== "number" || level.moves < 1) {
+            errors.push(`关卡 #${index + 1}: moves 必须是大于 0 的整数`);
+          }
+
+          if (level.targets && !Array.isArray(level.targets)) {
+            errors.push(`关卡 #${index + 1}: targets 必须是数组`);
+          }
+
+          if (
+            level.stars &&
+            (!Array.isArray(level.stars) || level.stars.length !== 3)
+          ) {
+            errors.push(`关卡 #${index + 1}: stars 必须是包含 3 个数字的数组`);
+          }
+
+          if (level.theme && typeof level.theme !== "string") {
+            errors.push(`关卡 #${index + 1}: theme 必须是字符串`);
+          }
+
+          if (
+            level.specialRules &&
+            (typeof level.specialRules !== "object" ||
+              Array.isArray(level.specialRules))
+          ) {
+            errors.push(`关卡 #${index + 1}: specialRules 必须是对象`);
+          }
+        });
+
+        if (errors.length > 0) {
+          const errorMsg =
+            "导入验证失败，发现以下错误：\n\n" +
+            errors.slice(0, 10).join("\n") +
+            (errors.length > 10
+              ? `\n\n... 还有 ${errors.length - 10} 个错误`
+              : "");
+          alert(errorMsg);
+          return;
+        }
+
+        // Sort by ID to maintain order
+        parsed.sort((a, b) => (a.id || 0) - (b.id || 0));
+
         window.LEVELS = parsed;
         renderLevelList();
         renderLevelMenu();
-        alert("已导入 JSON 并更新内存中的关卡列表");
+        alert(`成功导入 ${parsed.length} 个关卡！`);
+
+        // Reset file input
+        importInput.value = "";
       } catch (err) {
-        alert("导入失败：" + err.message);
+        let errorMsg = "导入失败：";
+        if (err instanceof SyntaxError) {
+          errorMsg += "JSON 格式错误 - " + err.message;
+        } else {
+          errorMsg += err.message;
+        }
+        alert(errorMsg);
       }
     };
     fr.readAsText(f, "utf-8");
   });
 
+  const previewBtn = document.createElement("button");
+  previewBtn.textContent = "预览关卡";
+  previewBtn.type = "button";
+  previewBtn.className = "editor-button";
+  previewBtn.style.backgroundColor = "#2a5";
+  previewBtn.addEventListener("click", () => {
+    if (selectedIndex == null) return alert("请先选择一个关卡");
+
+    // Save current draft first
+    const lvl = window.LEVELS[selectedIndex];
+    if (!lvl) return;
+
+    // Temporarily save current edits to a temp level for preview
+    const tempLevel = JSON.parse(JSON.stringify(lvl));
+    tempLevel.name = nameInput.value.trim() || tempLevel.name;
+    tempLevel.unlocked = true; // Force unlock for preview
+    tempLevel.theme = themeInput.value || "plain";
+    tempLevel.moves = Math.max(1, Number(movesInput.value) || 1);
+    tempLevel.targetScore = Math.max(0, Number(targetScoreInput.value) || 0);
+    tempLevel.description = descInput.value;
+    const starVals = starInputs.map((s) => Math.max(0, Number(s.value) || 0));
+    tempLevel.stars = starVals;
+    tempLevel.thumbnail = currentDraft.thumbnail || tempLevel.thumbnail || "";
+
+    // Save targets
+    const rows = Array.from(targetsContainer.children);
+    const newTargets = rows.map((r) => r._get());
+    tempLevel.targets = newTargets;
+
+    // Save specialRules
+    let specialRules = {};
+    const specialRulesText = specialRulesInput.value.trim();
+    if (specialRulesText) {
+      try {
+        const parsed = JSON.parse(specialRulesText);
+        if (typeof parsed === "object" && !Array.isArray(parsed)) {
+          specialRules = parsed;
+        }
+      } catch (e) {
+        // Ignore parse errors for preview
+      }
+    }
+    tempLevel.specialRules = specialRules;
+
+    // Save initial board layout
+    const initialBoard = [];
+    let hasAnyTile = false;
+    for (let r = 0; r < GRID_SIZE; r++) {
+      const row = [];
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const cell = boardEditorCells[r * GRID_SIZE + c];
+        const color = cell.dataset.color;
+        if (color) {
+          hasAnyTile = true;
+          row.push({ color: color, type: "normal", state: "normal" });
+        } else {
+          row.push(null);
+        }
+      }
+      initialBoard.push(row);
+    }
+    if (hasAnyTile) {
+      tempLevel.initialBoard = initialBoard;
+    }
+
+    // Temporarily add to levels array and start it
+    const originalLevels = [...window.LEVELS];
+    const previewId = 99999; // Use a high ID for preview
+    tempLevel.id = previewId;
+
+    // Check if preview level already exists, remove it
+    window.LEVELS = window.LEVELS.filter((l) => l.id !== previewId);
+    window.LEVELS.push(tempLevel);
+
+    // Close editor and start preview
+    overlay.classList.add("hidden");
+
+    // Small delay to ensure editor is closed
+    setTimeout(() => {
+      startLevel(previewId);
+      // Restore original levels after a moment (in case user wants to continue editing)
+      setTimeout(() => {
+        window.LEVELS = originalLevels;
+        renderLevelMenu();
+      }, 100);
+    }, 100);
+  });
+
   const closeBtn = document.createElement("button");
-  closeBtn.textContent = "关闭";
+  closeBtn.textContent = "关闭 (ESC)";
   closeBtn.type = "button";
+  closeBtn.className = "editor-button";
   closeBtn.addEventListener("click", () => {
     overlay.classList.add("hidden");
   });
 
+  // ESC key to close
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape" && !overlay.classList.contains("hidden")) {
+      overlay.classList.add("hidden");
+    }
+  };
+  document.addEventListener("keydown", handleKeyDown);
+
+  // Clean up event listener when overlay is removed (optional, but good practice)
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      overlay.classList.add("hidden");
+    }
+  });
+
+  // Import button wrapper for better UX
+  const importLabel = document.createElement("label");
+  importLabel.className = "editor-button";
+  importLabel.style.cursor = "pointer";
+  importLabel.textContent = "导入 JSON";
+  importLabel.appendChild(importInput);
+  importInput.style.display = "none";
+
+  const historyControls = document.createElement("div");
+  historyControls.style.display = "flex";
+  historyControls.style.gap = "4px";
+  historyControls.style.marginBottom = "8px";
+  historyControls.appendChild(undoBtn);
+  historyControls.appendChild(redoBtn);
+
+  actions.appendChild(historyControls);
   actions.appendChild(applyBtn);
+  actions.appendChild(previewBtn);
   actions.appendChild(exportBtn);
-  actions.appendChild(importInput);
+  actions.appendChild(importLabel);
   actions.appendChild(clearThumbBtn);
   actions.appendChild(closeBtn);
 
-  // Build form layout
+  // Build form layout with help text
   form.appendChild(labeled("ID", idInput));
-  form.appendChild(labeled("名称", nameInput));
+  const nameHelp = document.createElement("div");
+  nameHelp.style.fontSize = "0.85em";
+  nameHelp.style.color = "#999";
+  nameHelp.style.marginTop = "2px";
+  nameHelp.textContent = "关卡显示名称";
+  const nameWrap = labeled("名称", nameInput);
+  nameWrap.appendChild(nameHelp);
+  form.appendChild(nameWrap);
+
   form.appendChild(
     (() => {
       const w = document.createElement("div");
       w.appendChild(unlockedInput);
-      w.appendChild(document.createTextNode(" 解锁"));
+      w.appendChild(document.createTextNode(" 解锁（玩家可直接游玩）"));
       return w;
     })()
   );
-  form.appendChild(labeled("步数 (moves)", movesInput));
-  form.appendChild(labeled("分数目标 (targetScore)", targetScoreInput));
+
+  const themeHelp = document.createElement("div");
+  themeHelp.style.fontSize = "0.85em";
+  themeHelp.style.color = "#999";
+  themeHelp.style.marginTop = "2px";
+  themeHelp.textContent = "关卡视觉主题风格";
+  const themeWrap = labeled("主题 (theme)", themeInput);
+  themeWrap.appendChild(themeHelp);
+  form.appendChild(themeWrap);
+
+  const movesHelp = document.createElement("div");
+  movesHelp.style.fontSize = "0.85em";
+  movesHelp.style.color = "#999";
+  movesHelp.style.marginTop = "2px";
+  movesHelp.textContent = "玩家可用的最大移动次数";
+  const movesWrap = labeled("步数 (moves)", movesInput);
+  movesWrap.appendChild(movesHelp);
+  form.appendChild(movesWrap);
+
+  const scoreHelp = document.createElement("div");
+  scoreHelp.style.fontSize = "0.85em";
+  scoreHelp.style.color = "#999";
+  scoreHelp.style.marginTop = "2px";
+  scoreHelp.textContent =
+    "完成关卡所需的最低分数（可选，也可通过 targets 设置）";
+  const scoreWrap = labeled("分数目标 (targetScore)", targetScoreInput);
+  scoreWrap.appendChild(scoreHelp);
+  form.appendChild(scoreWrap);
+
   form.appendChild(labeled("描述", descInput));
-  form.appendChild(labeled("星级阈值 (从低到高)", starsRow));
+
+  const starsHelp = document.createElement("div");
+  starsHelp.style.fontSize = "0.85em";
+  starsHelp.style.color = "#999";
+  starsHelp.style.marginTop = "2px";
+  starsHelp.textContent = "1星/2星/3星所需的分数阈值（必须递增）";
+  const starsWrap = labeled("星级阈值 (从低到高)", starsRow);
+  starsWrap.appendChild(starsHelp);
+  form.appendChild(starsWrap);
 
   const thumbWrap = document.createElement("div");
   thumbWrap.appendChild(thumbPreview);
@@ -3939,6 +4370,171 @@ function openLevelEditor() {
   form.appendChild(targetsContainer);
   form.appendChild(addTargetBtn);
 
+  // Special Rules editor
+  form.appendChild(document.createElement("hr"));
+  const specialRulesLabel = document.createElement("div");
+  specialRulesLabel.style.marginBottom = "4px";
+  specialRulesLabel.innerHTML =
+    "<strong>特殊规则 (specialRules)</strong> <span style='font-size: 0.9em; color: #999;'>(JSON 对象格式)</span>";
+  const specialRulesInput = document.createElement("textarea");
+  specialRulesInput.rows = 6;
+  specialRulesInput.style.fontFamily = "monospace";
+  specialRulesInput.style.fontSize = "12px";
+  specialRulesInput.placeholder = '例如: {"spawnRate": 0.5, "maxCombo": 10}';
+  const specialRulesHelp = document.createElement("div");
+  specialRulesHelp.style.fontSize = "0.85em";
+  specialRulesHelp.style.color = "#999";
+  specialRulesHelp.style.marginTop = "4px";
+  specialRulesHelp.textContent =
+    "提示: 留空或输入 {} 表示无特殊规则。必须是有效的 JSON 对象格式。";
+  const specialRulesWrap = document.createElement("div");
+  specialRulesWrap.appendChild(specialRulesLabel);
+  specialRulesWrap.appendChild(specialRulesInput);
+  specialRulesWrap.appendChild(specialRulesHelp);
+  form.appendChild(specialRulesWrap);
+
+  // Color names map (shared for board editor and form population)
+  const colorNamesMap = {
+    red: "红",
+    blue: "蓝",
+    green: "绿",
+    purple: "紫",
+    white: "白",
+    orange: "橙",
+    yellow: "黄",
+  };
+
+  // Initial Board Layout Editor
+  form.appendChild(document.createElement("hr"));
+  const boardLabel = document.createElement("div");
+  boardLabel.style.marginBottom = "4px";
+  boardLabel.innerHTML = "<strong>初始游戏板布局 (initialBoard)</strong>";
+  const boardHelp = document.createElement("div");
+  boardHelp.style.fontSize = "0.85em";
+  boardHelp.style.color = "#999";
+  boardHelp.style.marginBottom = "8px";
+  boardHelp.textContent =
+    "点击格子设置方块颜色，右键清除。留空则使用随机生成。";
+
+  const boardEditorContainer = document.createElement("div");
+  boardEditorContainer.id = "board-editor-container";
+  boardEditorContainer.style.display = "grid";
+  boardEditorContainer.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
+  boardEditorContainer.style.gap = "2px";
+  boardEditorContainer.style.width = "360px";
+  boardEditorContainer.style.maxWidth = "100%";
+  boardEditorContainer.style.margin = "8px 0";
+  boardEditorContainer.style.padding = "8px";
+  boardEditorContainer.style.backgroundColor = "#111";
+  boardEditorContainer.style.borderRadius = "4px";
+  boardEditorContainer.style.border = "1px solid #333";
+
+  const boardEditorCells = [];
+  let selectedColorForBoard = "red";
+
+  // Color picker for board editor
+  const colorPickerRow = document.createElement("div");
+  colorPickerRow.style.display = "flex";
+  colorPickerRow.style.gap = "4px";
+  colorPickerRow.style.marginBottom = "8px";
+  colorPickerRow.style.flexWrap = "wrap";
+
+  const colorPickerLabel = document.createElement("span");
+  colorPickerLabel.textContent = "选择颜色: ";
+  colorPickerLabel.style.marginRight = "8px";
+  colorPickerRow.appendChild(colorPickerLabel);
+
+  COLORS.forEach((color) => {
+    const colorBtn = document.createElement("button");
+    colorBtn.textContent = colorNamesMap[color] || color;
+    colorBtn.style.padding = "4px 8px";
+    colorBtn.style.borderRadius = "4px";
+    colorBtn.style.border = "1px solid #444";
+    colorBtn.style.backgroundColor = `var(--color-${color})`;
+    colorBtn.style.color = color === "white" ? "#000" : "#fff";
+    colorBtn.style.cursor = "pointer";
+    colorBtn.style.fontSize = "11px";
+    colorBtn.dataset.color = color;
+
+    if (color === selectedColorForBoard) {
+      colorBtn.style.border = "2px solid #fff";
+      colorBtn.style.boxShadow = "0 0 8px rgba(255,255,255,0.5)";
+    }
+
+    colorBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      selectedColorForBoard = color;
+      colorPickerRow.querySelectorAll("button").forEach((btn) => {
+        btn.style.border = "1px solid #444";
+        btn.style.boxShadow = "none";
+      });
+      colorBtn.style.border = "2px solid #fff";
+      colorBtn.style.boxShadow = "0 0 8px rgba(255,255,255,0.5)";
+    });
+
+    colorPickerRow.appendChild(colorBtn);
+  });
+
+  const clearBoardBtn = document.createElement("button");
+  clearBoardBtn.textContent = "清空布局";
+  clearBoardBtn.className = "editor-button";
+  clearBoardBtn.style.marginLeft = "auto";
+  clearBoardBtn.addEventListener("click", () => {
+    boardEditorCells.forEach((cell) => {
+      cell.dataset.color = "";
+      cell.style.backgroundColor = "#222";
+      cell.textContent = "";
+    });
+  });
+  colorPickerRow.appendChild(clearBoardBtn);
+
+  // Create 9x9 grid
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const cell = document.createElement("div");
+      cell.style.aspectRatio = "1";
+      cell.style.backgroundColor = "#222";
+      cell.style.border = "1px solid #444";
+      cell.style.cursor = "pointer";
+      cell.style.display = "flex";
+      cell.style.alignItems = "center";
+      cell.style.justifyContent = "center";
+      cell.style.fontSize = "10px";
+      cell.style.position = "relative";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.dataset.color = "";
+
+      cell.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (selectedColorForBoard) {
+          cell.dataset.color = selectedColorForBoard;
+          cell.style.backgroundColor = `var(--color-${selectedColorForBoard})`;
+          cell.textContent =
+            colorNamesMap[selectedColorForBoard] ||
+            selectedColorForBoard[0].toUpperCase();
+        }
+      });
+
+      cell.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        cell.dataset.color = "";
+        cell.style.backgroundColor = "#222";
+        cell.textContent = "";
+      });
+
+      boardEditorCells.push(cell);
+      boardEditorContainer.appendChild(cell);
+    }
+  }
+
+  const boardEditorWrap = document.createElement("div");
+  boardEditorWrap.appendChild(boardLabel);
+  boardEditorWrap.appendChild(boardHelp);
+  boardEditorWrap.appendChild(colorPickerRow);
+  boardEditorWrap.appendChild(boardEditorContainer);
+  form.appendChild(boardEditorWrap);
+
   form.appendChild(actions);
   right.appendChild(form);
 
@@ -3951,15 +4547,121 @@ function openLevelEditor() {
   let selectedIndex = null;
   let currentDraft = {};
 
+  // Undo/Redo system
+  let historyStack = [];
+  let historyIndex = -1;
+  const MAX_HISTORY = 50;
+
+  function saveToHistory() {
+    if (selectedIndex == null) return;
+    const snapshot = {
+      levelData: JSON.parse(JSON.stringify(window.LEVELS[selectedIndex])),
+      timestamp: Date.now(),
+    };
+
+    // Remove any history after current index (when user does new action after undo)
+    historyStack = historyStack.slice(0, historyIndex + 1);
+
+    // Add new snapshot
+    historyStack.push(snapshot);
+    historyIndex++;
+
+    // Limit history size
+    if (historyStack.length > MAX_HISTORY) {
+      historyStack.shift();
+      historyIndex--;
+    }
+
+    updateUndoRedoButtons();
+  }
+
+  function undo() {
+    if (historyIndex <= 0 || selectedIndex == null) return;
+    historyIndex--;
+    const snapshot = historyStack[historyIndex];
+    if (snapshot && snapshot.levelData) {
+      window.LEVELS[selectedIndex] = JSON.parse(
+        JSON.stringify(snapshot.levelData)
+      );
+      populateForm(selectedIndex);
+      renderLevelList();
+      renderLevelMenu();
+    }
+    updateUndoRedoButtons();
+  }
+
+  function redo() {
+    if (historyIndex >= historyStack.length - 1 || selectedIndex == null)
+      return;
+    historyIndex++;
+    const snapshot = historyStack[historyIndex];
+    if (snapshot && snapshot.levelData) {
+      window.LEVELS[selectedIndex] = JSON.parse(
+        JSON.stringify(snapshot.levelData)
+      );
+      populateForm(selectedIndex);
+      renderLevelList();
+      renderLevelMenu();
+    }
+    updateUndoRedoButtons();
+  }
+
+  function updateUndoRedoButtons() {
+    undoBtn.disabled = historyIndex <= 0;
+    redoBtn.disabled = historyIndex >= historyStack.length - 1;
+  }
+
+  function resetHistory() {
+    historyStack = [];
+    historyIndex = -1;
+    updateUndoRedoButtons();
+  }
+
+  // Undo/Redo buttons
+  const undoBtn = document.createElement("button");
+  undoBtn.textContent = "撤销 (Ctrl+Z)";
+  undoBtn.className = "editor-button";
+  undoBtn.type = "button";
+  undoBtn.disabled = true;
+  undoBtn.addEventListener("click", undo);
+
+  const redoBtn = document.createElement("button");
+  redoBtn.textContent = "重做 (Ctrl+Y)";
+  redoBtn.className = "editor-button";
+  redoBtn.type = "button";
+  redoBtn.disabled = true;
+  redoBtn.addEventListener("click", redo);
+
+  // Keyboard shortcuts
+  const handleEditorKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && !overlay.classList.contains("hidden")) {
+      if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (e.key === "y" || (e.key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        redo();
+      }
+    }
+  };
+  document.addEventListener("keydown", handleEditorKeyDown);
+
   function clearForm() {
     idInput.value = "";
     nameInput.value = "";
     unlockedInput.checked = false;
+    themeInput.value = "plain";
     movesInput.value = "";
     targetScoreInput.value = "";
     descInput.value = "";
     starInputs.forEach((s) => (s.value = ""));
     thumbPreview.src = "";
+    specialRulesInput.value = "";
+    boardEditorCells.forEach((cell) => {
+      cell.dataset.color = "";
+      cell.style.backgroundColor = "#222";
+      cell.textContent = "";
+    });
     targetsContainer.innerHTML = "";
     currentDraft = {};
   }
@@ -3967,11 +4669,20 @@ function openLevelEditor() {
   function populateForm(idx) {
     const lvl = window.LEVELS[idx];
     if (!lvl) return;
+    const prevIndex = selectedIndex;
     selectedIndex = idx;
+
+    // Reset history when switching levels
+    if (prevIndex !== idx) {
+      resetHistory();
+      saveToHistory(); // Save initial state
+    }
+
     currentDraft = JSON.parse(JSON.stringify(lvl));
     idInput.value = lvl.id;
     nameInput.value = lvl.name || "";
     unlockedInput.checked = !!lvl.unlocked;
+    themeInput.value = lvl.theme || "plain";
     movesInput.value = lvl.moves || 20;
     targetScoreInput.value =
       lvl.targetScore ||
@@ -3985,6 +4696,41 @@ function openLevelEditor() {
     currentDraft.targets = Array.isArray(lvl.targets)
       ? JSON.parse(JSON.stringify(lvl.targets))
       : [];
+    // Load specialRules
+    if (lvl.specialRules && typeof lvl.specialRules === "object") {
+      try {
+        specialRulesInput.value = JSON.stringify(lvl.specialRules, null, 2);
+      } catch (e) {
+        specialRulesInput.value = "{}";
+      }
+    } else {
+      specialRulesInput.value = "";
+    }
+
+    // Load initial board layout
+    boardEditorCells.forEach((cell) => {
+      cell.dataset.color = "";
+      cell.style.backgroundColor = "#222";
+      cell.textContent = "";
+    });
+    if (lvl.initialBoard && Array.isArray(lvl.initialBoard)) {
+      for (let r = 0; r < GRID_SIZE && r < lvl.initialBoard.length; r++) {
+        const row = lvl.initialBoard[r];
+        if (Array.isArray(row)) {
+          for (let c = 0; c < GRID_SIZE && c < row.length; c++) {
+            const tile = row[c];
+            if (tile && tile.color) {
+              const cell = boardEditorCells[r * GRID_SIZE + c];
+              cell.dataset.color = tile.color;
+              cell.style.backgroundColor = `var(--color-${tile.color})`;
+              cell.textContent =
+                colorNamesMap[tile.color] || tile.color[0].toUpperCase();
+            }
+          }
+        }
+      }
+    }
+
     renderTargetsEditor(currentDraft.targets);
   }
 
@@ -3998,18 +4744,191 @@ function openLevelEditor() {
     if (idx != null) populateForm(idx);
   }
 
+  // Batch operations state
+  let batchMode = false;
+  let selectedIndices = new Set();
+
   function renderLevelList() {
     list.innerHTML = "";
+
+    // Batch mode toggle
+    if (!list.querySelector(".batch-mode-toggle")) {
+      const batchToggle = document.createElement("div");
+      batchToggle.className = "batch-mode-toggle";
+      batchToggle.style.marginBottom = "8px";
+      batchToggle.style.padding = "4px";
+      const batchCheckbox = document.createElement("input");
+      batchCheckbox.type = "checkbox";
+      batchCheckbox.id = "batch-mode-checkbox";
+      batchCheckbox.addEventListener("change", (e) => {
+        batchMode = e.target.checked;
+        selectedIndices.clear();
+        renderLevelList();
+        updateBatchControls();
+      });
+      const batchLabel = document.createElement("label");
+      batchLabel.htmlFor = "batch-mode-checkbox";
+      batchLabel.textContent = "批量选择模式";
+      batchLabel.style.cursor = "pointer";
+      batchLabel.style.marginLeft = "4px";
+      batchToggle.appendChild(batchCheckbox);
+      batchToggle.appendChild(batchLabel);
+      list.appendChild(batchToggle);
+    }
+
     (window.LEVELS || []).forEach((l, i) => {
       const it = document.createElement("div");
       it.className = "editor-list-item";
-      it.textContent = `${l.id}. ${l.name || "未命名"}`;
-      it.addEventListener("click", () => {
-        selectLevelByIndex(i);
+      it.style.display = "flex";
+      it.style.alignItems = "center";
+      it.style.gap = "6px";
+
+      if (batchMode) {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = selectedIndices.has(i);
+        checkbox.addEventListener("change", (e) => {
+          if (e.target.checked) {
+            selectedIndices.add(i);
+          } else {
+            selectedIndices.delete(i);
+          }
+          updateBatchControls();
+        });
+        checkbox.addEventListener("click", (e) => e.stopPropagation());
+        it.appendChild(checkbox);
+      }
+
+      const label = document.createElement("span");
+      label.textContent = `${l.id}. ${l.name || "未命名"}`;
+      label.style.flex = "1";
+      label.style.cursor = "pointer";
+      label.addEventListener("click", () => {
+        if (batchMode) {
+          const checkbox = it.querySelector("input[type='checkbox']");
+          if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event("change"));
+          }
+        } else {
+          selectLevelByIndex(i);
+        }
       });
+      it.appendChild(label);
+
+      if (i === selectedIndex && !batchMode) {
+        it.classList.add("selected");
+      }
+
       list.appendChild(it);
     });
   }
+
+  function updateBatchControls() {
+    const count = selectedIndices.size;
+    batchUnlockBtn.disabled = count === 0;
+    batchLockBtn.disabled = count === 0;
+    batchDeleteBtn.disabled = count === 0;
+    batchSelectAllBtn.textContent =
+      count === window.LEVELS.length ? "取消全选" : "全选";
+  }
+
+  const batchControls = document.createElement("div");
+  batchControls.style.display = "flex";
+  batchControls.style.flexDirection = "column";
+  batchControls.style.gap = "4px";
+  batchControls.style.marginTop = "8px";
+  batchControls.style.padding = "8px";
+  batchControls.style.backgroundColor = "#111";
+  batchControls.style.borderRadius = "4px";
+  batchControls.style.border = "1px solid #333";
+  batchControls.style.display = "none"; // Hidden by default
+
+  const batchSelectAllBtn = document.createElement("button");
+  batchSelectAllBtn.textContent = "全选";
+  batchSelectAllBtn.className = "editor-button";
+  batchSelectAllBtn.addEventListener("click", () => {
+    if (selectedIndices.size === window.LEVELS.length) {
+      selectedIndices.clear();
+    } else {
+      selectedIndices = new Set(window.LEVELS.map((_, i) => i));
+    }
+    renderLevelList();
+    updateBatchControls();
+  });
+
+  const batchUnlockBtn = document.createElement("button");
+  batchUnlockBtn.textContent = "批量解锁";
+  batchUnlockBtn.className = "editor-button";
+  batchUnlockBtn.disabled = true;
+  batchUnlockBtn.addEventListener("click", () => {
+    if (selectedIndices.size === 0) return;
+    selectedIndices.forEach((idx) => {
+      if (window.LEVELS[idx]) {
+        window.LEVELS[idx].unlocked = true;
+      }
+    });
+    renderLevelList();
+    renderLevelMenu();
+    alert(`已解锁 ${selectedIndices.size} 个关卡`);
+  });
+
+  const batchLockBtn = document.createElement("button");
+  batchLockBtn.textContent = "批量锁定";
+  batchLockBtn.className = "editor-button";
+  batchLockBtn.disabled = true;
+  batchLockBtn.addEventListener("click", () => {
+    if (selectedIndices.size === 0) return;
+    selectedIndices.forEach((idx) => {
+      if (window.LEVELS[idx]) {
+        window.LEVELS[idx].unlocked = false;
+      }
+    });
+    renderLevelList();
+    renderLevelMenu();
+    alert(`已锁定 ${selectedIndices.size} 个关卡`);
+  });
+
+  const batchDeleteBtn = document.createElement("button");
+  batchDeleteBtn.textContent = "批量删除";
+  batchDeleteBtn.className = "editor-button";
+  batchDeleteBtn.style.backgroundColor = "#a22";
+  batchDeleteBtn.disabled = true;
+  batchDeleteBtn.addEventListener("click", () => {
+    if (selectedIndices.size === 0) return;
+    if (
+      !confirm(
+        `确认删除选中的 ${selectedIndices.size} 个关卡？此操作无法撤销！`
+      )
+    )
+      return;
+
+    // Delete in reverse order to maintain indices
+    const sortedIndices = Array.from(selectedIndices).sort((a, b) => b - a);
+    sortedIndices.forEach((idx) => {
+      window.LEVELS.splice(idx, 1);
+    });
+
+    selectedIndices.clear();
+    selectedIndex = null;
+    clearForm();
+    renderLevelList();
+    renderLevelMenu();
+    alert(`已删除 ${sortedIndices.length} 个关卡`);
+  });
+
+  batchControls.appendChild(batchSelectAllBtn);
+  batchControls.appendChild(batchUnlockBtn);
+  batchControls.appendChild(batchLockBtn);
+  batchControls.appendChild(batchDeleteBtn);
+
+  // Show/hide batch controls based on mode
+  const originalRenderLevelList = renderLevelList;
+  renderLevelList = function () {
+    originalRenderLevelList();
+    batchControls.style.display = batchMode ? "flex" : "none";
+    updateBatchControls();
+  };
 
   // initial render
   renderLevelList();

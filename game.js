@@ -3116,7 +3116,7 @@ function checkLevelProgress() {
 //     LevelManager.loadLevels(), .saveProgress(), .loadProgress(), .getLevelById(id), .unlockLevel(id), .getNextLevel(id)
 // ==========================================
 
-const LEVELS_URL = "levels.json";
+const LEVELS_URL = "/api/levels"; // 指向 API 端点
 const LEVELS_PROGRESS_KEY = "mymatch_levels_progress_v1";
 const SETTINGS_KEY = "mymatch_settings_v1";
 
@@ -3164,15 +3164,34 @@ function saveSettings() {
 
 async function loadLevels() {
   try {
-    const resp = await fetch(LEVELS_URL, { cache: "no-cache" });
+    // 添加时间戳以避免缓存
+    const urlWithTimestamp = `${LEVELS_URL}?t=${Date.now()}`;
+    const resp = await fetch(urlWithTimestamp, { 
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+    
     if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const data = await resp.json();
-    if (!Array.isArray(data)) throw new Error("levels.json 格式错误");
-    window.LEVELS = data;
-    console.log("levels.json 加载成功，关卡数量：", window.LEVELS.length);
+    const result = await resp.json();
+    
+    // 检查响应格式
+    if (result.success && Array.isArray(result.levels)) {
+      window.LEVELS = result.levels;
+    } else if (Array.isArray(result)) {
+      // 直接返回数组的兼容处理
+      window.LEVELS = result;
+    } else {
+      throw new Error("API 返回格式错误");
+    }
+    
+    console.log("关卡加载成功，关卡数量：", window.LEVELS.length);
   } catch (err) {
     console.warn(
-      "无法通过 fetch 加载 levels.json，使用内置回退关卡。错误：",
+      "无法通过 API 加载关卡，使用内置回退关卡。错误：",
       err
     );
     window.LEVELS = _embeddedFallbackLevels.slice();

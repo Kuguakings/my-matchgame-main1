@@ -10,7 +10,7 @@
 const GAME_VERSION = "12.5.23.00";
 
 const GRID_SIZE = 9;
-const COLORS = ["red", "blue", "green", "purple", "white", "orange", "yellow"];
+const COLORS = ["红色", "蓝色", "绿色", "紫色", "白色", "橙色", "黄色"];
 let board = [];
 let score = 0;
 let level = 1;
@@ -27,6 +27,17 @@ let levelTargets = {}; // { color: count }
 
 // 游戏状态保存相关常量
 const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
+
+// 修改颜色权重配置
+const COLOR_WEIGHTS = {
+  "红色": 18,
+  "蓝色": 18,
+  "绿色": 18,
+  "紫色": 18,
+  "白色": 18,
+  "橙色": 5,
+  "黄色": 5
+};
 
 const gridContainer = document.getElementById("grid-container");
 const scoreDisplay = document.getElementById("score");
@@ -69,6 +80,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   
+  // 添加权重滑块事件监听器
+  const weightSliders = document.querySelectorAll('.weight-slider input[type="range"]');
+  weightSliders.forEach(slider => {
+    // 初始化显示值
+    const color = slider.dataset.color;
+    const span = document.getElementById(`${color}-weight`);
+    if (span) {
+      span.textContent = slider.value;
+    }
+    
+    // 添加事件监听器
+    slider.addEventListener('input', function() {
+      const color = this.dataset.color;
+      const weight = parseInt(this.value);
+      
+      // 更新显示值
+      const span = document.getElementById(`${color}-weight`);
+      if (span) {
+        span.textContent = weight;
+      }
+      
+      // 更新权重配置
+      COLOR_WEIGHTS[color] = weight;
+    });
+  });
+  
   // Load user settings and levels BEFORE starting the first level.
   try {
     loadSettings();
@@ -90,6 +127,22 @@ document.addEventListener("DOMContentLoaded", () => {
     initGame();
   }
 });
+
+/*
+  getWeightedRandomColor()
+  - 按预设权重随机返回一个颜色字符串。orange 和 yellow 概率较低（稀有色）。
+  - 返回值为 COLORS 数组内的一项。
+*/
+function getWeightedRandomColor() {
+  const totalWeight = Object.values(COLOR_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
+  let r = Math.random() * totalWeight;
+  
+  for (const [color, weight] of Object.entries(COLOR_WEIGHTS)) {
+    if (r < weight) return color;
+    r -= weight;
+  }
+  return COLORS[0];
+}
 
 /*
   createParticle(r, c, type)

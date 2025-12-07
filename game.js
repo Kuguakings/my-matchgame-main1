@@ -83,27 +83,57 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   
-  // 添加权重输入框事件监听器
+  // 添加权重输入框事件监听器（仅在编辑器中存在这些元素）
   const weightInputs = document.querySelectorAll('.color-weight-input');
-  const weightsTotal = document.getElementById('weights-total');
+  if (weightInputs.length > 0) {
+    const weightsTotal = document.getElementById('weights-total');
+    
+    weightInputs.forEach(input => {
+      // 添加事件监听器
+      input.addEventListener('input', function() {
+        const color = this.dataset.color;
+        const weight = parseInt(this.value) || 0;
+        
+        // 更新当前权重配置
+        currentLevelWeights[color] = weight;
+        
+        // 计算总权重
+        const total = Object.values(currentLevelWeights).reduce((sum, w) => sum + w, 0);
+        if (weightsTotal) {
+          weightsTotal.textContent = total;
+          weightsTotal.style.color = total === 100 ? 'green' : 'red';
+        }
+      });
+    });
+  }
   
-  weightInputs.forEach(input => {
-    // 添加事件监听器
-    input.addEventListener('input', function() {
-      const color = this.dataset.color;
-      const weight = parseInt(this.value) || 0;
-      
-      // 更新当前权重配置
-      currentLevelWeights[color] = weight;
-      
-      // 计算总权重
-      const total = Object.values(currentLevelWeights).reduce((sum, w) => sum + w, 0);
-      if (weightsTotal) {
-        weightsTotal.textContent = total;
-        weightsTotal.style.color = total === 100 ? 'green' : 'red';
+  // 添加更新编辑器权重输入框的函数
+  function updateEditorWeightInputs() {
+    // 只在编辑器模式下更新权重输入框
+    const weightInputs = document.querySelectorAll('.color-weight-input');
+    if (weightInputs.length === 0) return; // 不在编辑器中，直接返回
+    
+    weightInputs.forEach(input => {
+      const color = input.dataset.color;
+      if (currentLevelWeights[color] !== undefined) {
+        input.value = currentLevelWeights[color];
       }
     });
-  });
+    
+    // 更新总计显示
+    const weightsTotal = document.getElementById('weights-total');
+    if (weightsTotal) {
+      const total = Object.values(currentLevelWeights).reduce((sum, w) => sum + w, 0);
+      weightsTotal.textContent = total;
+      weightsTotal.style.color = total === 100 ? 'green' : 'red';
+    }
+  }
+}
+
+        }
+      });
+    });
+  }
   
   // Load user settings and levels BEFORE starting the first level.
   try {
@@ -161,7 +191,10 @@ function applyFreeze(tile) {
 
 // 添加更新编辑器权重输入框的函数
 function updateEditorWeightInputs() {
+  // 只在编辑器模式下更新权重输入框
   const weightInputs = document.querySelectorAll('.color-weight-input');
+  if (weightInputs.length === 0) return; // 不在编辑器中，直接返回
+  
   weightInputs.forEach(input => {
     const color = input.dataset.color;
     if (currentLevelWeights[color] !== undefined) {
@@ -178,9 +211,13 @@ function updateEditorWeightInputs() {
   }
 }
 
+
 // 添加重置颜色权重到默认值的函数
 function resetColorWeightsToDefault() {
-  document.querySelectorAll('.color-weight-input').forEach(input => {
+  const inputs = document.querySelectorAll('.color-weight-input');
+  if (inputs.length === 0) return; // 不在编辑器中，直接返回
+  
+  inputs.forEach(input => {
     const color = input.dataset.color;
     input.value = DEFAULT_COLOR_WEIGHTS[color];
   });
@@ -191,10 +228,16 @@ function resetColorWeightsToDefault() {
 function updateWeightsTotal() {
   const weightsTotal = document.getElementById('weights-total');
   if (weightsTotal) {
-    const total = Array.from(document.querySelectorAll('.color-weight-input'))
+    const inputs = document.querySelectorAll('.color-weight-input');
+    if (inputs.length === 0) return; // 不在编辑器中，直接返回
+    
+    const total = Array.from(inputs)
       .reduce((sum, input) => sum + (parseInt(input.value) || 0), 0);
     weightsTotal.textContent = total;
     weightsTotal.style.color = total === 100 ? 'green' : 'red';
+  }
+}
+
   }
 }
 

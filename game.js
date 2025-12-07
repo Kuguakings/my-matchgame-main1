@@ -540,12 +540,39 @@ function showVFX(r, c, type, orientation = "horizontal") {
       el.style.height = cell.offsetHeight + "px";
       el.style.top = cell.offsetTop + "px";
       el.style.left = cell.offsetLeft + "px";
-    } else {
-      // Fallback: if we cannot compute exact cell bounds, just show a simple vortex element
-      el.classList.add("void-vortex");
-      vfxContainer.appendChild(el);
-      setTimeout(() => el.remove(), 1200);
     }
+    vfxContainer.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+  } else if (type === "lightning") {
+    // 闪电特效：从起点到目标点
+    el.classList.add("lightning-arc");
+    if (
+      orientation &&
+      typeof orientation === "object" &&
+      orientation.r !== undefined
+    ) {
+      // orientation 实际上是 target 对象 {r, c}
+      const targetR = orientation.r;
+      const targetC = orientation.c;
+      const startTop = (r + 0.5) * (100 / GRID_SIZE) + "%";
+      const startLeft = (c + 0.5) * (100 / GRID_SIZE) + "%";
+      const endTop = (targetR + 0.5) * (100 / GRID_SIZE) + "%";
+      const endLeft = (targetC + 0.5) * (100 / GRID_SIZE) + "%";
+
+      // 计算角度和距离
+      const dx = (targetC - c) * (100 / GRID_SIZE);
+      const dy = (targetR - r) * (100 / GRID_SIZE);
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      const distance = Math.sqrt(dx * dx + dy * dy) * GRID_SIZE;
+
+      el.style.top = startTop;
+      el.style.left = startLeft;
+      el.style.width = distance + "vmin";
+      el.style.transform = `rotate(${angle}deg)`;
+      el.style.transformOrigin = "0 50%";
+    }
+    vfxContainer.appendChild(el);
+    setTimeout(() => el.remove(), 300);
   } else {
     // 默认特效展示（未知 type）: 简单添加元素并短时间移除
     vfxContainer.appendChild(el);
@@ -1233,7 +1260,15 @@ async function processMatches(initialMatches = null, swapFocus = null) {
             await handleOrangeMatch4();
             group.tiles.forEach((t) => tilesToRemove.add(`${t.r},${t.c}`));
           } else if (groupColor === "yellow") {
-            await handleYellowMatch4(creationPos.r, creationPos.c);
+            // 球形闪电必须从四消的任意黄色方块位置出现
+            const yellowTiles = group.tiles.filter(
+              (t) => board[t.r][t.c].color === "yellow"
+            );
+            if (yellowTiles.length > 0) {
+              const randomYellowTile =
+                yellowTiles[Math.floor(Math.random() * yellowTiles.length)];
+              await handleYellowMatch4(randomYellowTile.r, randomYellowTile.c);
+            }
             group.tiles.forEach((t) => tilesToRemove.add(`${t.r},${t.c}`));
           }
         } else {
@@ -2797,37 +2832,33 @@ async function handleYellowMatch3(r, c, groupTiles, context = null) {
     if (tile && tile.voltage) voltageSum += tile.voltage;
   });
 
-  // 1. Fusion Core (Sum >= 9)
+  // 电压和等级：达到9级就只触发Fusion Core，无视前面几种低等级效果
+  // 1. Fusion Core (Sum >= 9) - 最高优先级
   if (voltageSum >= 9) {
     pendingFusionCores.push({ r, c });
+    return; // 只触发Fusion Core，不触发其他效果
   }
 
-  // 2. EMP (Sum >= 7)
+  // 2. EMP (7 <= Sum < 9)
   // 3x3 Area centered on MATCH CENTER (r,c)
   // Effect: Non-Yellow -> Lvl 1. Yellow -> Lvl 3 (Silent).
-  else if (voltageSum >= 7) {
-    // Only triggers if Sum < 9? No, typically higher tiers include lower tiers or override them?
-    // Requirement: "A... B... C... D...". These seem like tiers.
-    // Usually Match-3 games trigger the highest tier reached.
-    // "A (Sum >= 3)... B (Sum >= 5)... C (Sum >= 7)... D (Sum >= 9)"
-    // If I have Sum 9, do I get Fusion Core AND EMP AND Lightning?
-    // Usually "X else Y". The text says "Sum >= 9", "Sum >= 7 but < 9".
-    // Ah! "Trigger condition: Sum >= 3 but < 5".
-    // So they are exclusive tiers.
-
+  if (voltageSum >= 7) {
     await triggerEMP(r, c);
+    return;
   }
 
-  // 3. Double Lightning (Sum >= 5)
-  else if (voltageSum >= 5) {
-    // 2 Lightnings. Range 7x7.
+  // 3. Double Lightning (5 <= Sum < 7)
+  // 2 Lightnings. Range 7x7.
+  if (voltageSum >= 5) {
     await dischargeLightning(r, c, 2, 3, context); // Range 3 means radius 3 (7x7)
+    return;
   }
 
-  // 4. Single Lightning (Sum >= 3)
-  else if (voltageSum >= 3) {
-    // 1 Lightning. Global.
+  // 4. Single Lightning (3 <= Sum < 5)
+  // 1 Lightning. Global.
+  if (voltageSum >= 3) {
     await dischargeLightning(r, c, 1, 99, context);
+    return;
   }
 }
 
@@ -3048,8 +3079,12 @@ async function handleYellowMatch4(startR, startC) {
   vfxContainer.appendChild(ball);
 
   const updateBallPos = (r, c) => {
+    // 强制重绘，确保动画生效
+    ball.style.transition = "top 0.3s ease-out, left 0.3s ease-out";
     ball.style.top = (r + 0.5) * (100 / GRID_SIZE) + "%";
     ball.style.left = (c + 0.5) * (100 / GRID_SIZE) + "%";
+    // 强制浏览器重绘
+    ball.offsetHeight;
   };
   updateBallPos(startR, startC);
 
@@ -3211,10 +3246,14 @@ async function resumeBallLightnings() {
         ballObj.lastDr = move.dir.dr;
         ballObj.lastDc = move.dir.dc;
 
-        // Update Visual
+        // Update Visual with smooth animation
+        ballObj.element.style.transition =
+          "top 0.3s ease-out, left 0.3s ease-out";
         ballObj.element.style.top = (ballObj.r + 0.5) * (100 / GRID_SIZE) + "%";
         ballObj.element.style.left =
           (ballObj.c + 0.5) * (100 / GRID_SIZE) + "%";
+        // 强制浏览器重绘
+        ballObj.element.offsetHeight;
 
         // Transmute
         await transmuteTile(ballObj.r, ballObj.c);

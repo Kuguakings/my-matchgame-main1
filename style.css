@@ -1216,6 +1216,40 @@ body {
   opacity: 0.95;
 }
 
+/* Lightning Arc Effect */
+.lightning-arc {
+  position: absolute;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #ffff00 20%,
+    #ffffff 50%,
+    #00ffff 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px #ffff00, 0 0 20px rgba(255, 255, 0, 0.8);
+  z-index: 80;
+  transform-origin: 0 50%;
+  animation: lightning-flash 0.3s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes lightning-flash {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
 /* 编辑器样式 - 美化版本，支持双端适配 */
 .editor-overlay {
   position: fixed;
@@ -1974,25 +2008,29 @@ body {
 /* Ball Lightning (Ghost Unit) */
 .ball-lightning-ghost {
   position: absolute;
-  width: 8vmin;
-  height: 8vmin;
+  width: 10vmin;
+  height: 10vmin;
   background: radial-gradient(
     circle at 30% 30%,
-    #ffffff 0%,
-    #00ffff 40%,
-    #0099ff 70%,
+    #ffff00 0%,
+    #ffaa00 30%,
+    #ff6600 50%,
+    #ff0000 70%,
     transparent 100%
   );
   border-radius: 50%;
-  box-shadow: 0 0 30px #00ffff, 0 0 60px rgba(0, 255, 255, 0.6),
-    inset -3vmin -3vmin 8px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 40px #ffff00, 0 0 80px rgba(255, 255, 0, 0.8),
+    0 0 120px rgba(255, 200, 0, 0.6),
+    inset -4vmin -4vmin 10px rgba(255, 255, 255, 0.6);
   z-index: 100; /* Floating above board */
   pointer-events: none;
   mix-blend-mode: screen;
   animation: ghost-float 0.4s ease-in-out infinite alternate,
-    ghost-pulse 1s ease-in-out infinite;
-  transition: top 0.3s linear, left 0.3s linear;
-  filter: drop-shadow(0 0 8px #00ffff);
+    ghost-pulse 1s ease-in-out infinite,
+    ball-lightning-glow 0.5s ease-in-out infinite alternate;
+  transition: top 0.3s ease-out, left 0.3s ease-out;
+  filter: drop-shadow(0 0 12px #ffff00) brightness(1.2);
+  will-change: top, left, transform;
 }
 
 @keyframes ghost-float {
@@ -2009,7 +2047,21 @@ body {
 @keyframes ghost-pulse {
   0%,
   100% {
-    box-shadow: 0 0 25px #00ffff, 0 0 50px rgba(0, 255, 255, 0.5);
+    box-shadow: 0 0 40px #ffff00, 0 0 80px rgba(255, 255, 0, 0.8),
+      0 0 120px rgba(255, 200, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 60px #ffff00, 0 0 120px rgba(255, 255, 0, 1),
+      0 0 180px rgba(255, 200, 0, 0.8);
+  }
+}
+
+@keyframes ball-lightning-glow {
+  from {
+    filter: drop-shadow(0 0 12px #ffff00) brightness(1.2);
+  }
+  to {
+    filter: drop-shadow(0 0 20px #ffff00) brightness(1.5);
   }
   50% {
     box-shadow: 0 0 40px #00ffff, 0 0 80px rgba(0, 255, 255, 0.8);

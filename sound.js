@@ -291,25 +291,40 @@ class SoundManager {
             
             frequencies.forEach((freq, i) => {
                 try {
-                    const osc = this.ctx.createOscillator();
+                    // 使用多个振荡器创建更丰富的音色
+                    const osc1 = this.ctx.createOscillator();
+                    const osc2 = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
                     
-                    osc.type = 'sine';
-                    osc.frequency.value = freq;
+                    // 主音：三角波（柔和）
+                    osc1.type = 'triangle';
+                    osc1.frequency.value = freq;
+                    
+                    // 和声：正弦波（八度音）
+                    osc2.type = 'sine';
+                    osc2.frequency.value = freq * 2;
                     
                     const t = this.ctx.currentTime;
-                    gain.gain.setValueAtTime(0, t);
-                    gain.gain.linearRampToValueAtTime(volume, t + 0.1);
-                    gain.gain.exponentialRampToValueAtTime(volume * 0.3, t + duration * 0.8);
-                    gain.gain.linearRampToValueAtTime(0, t + duration);
+                    const delay = i * 0.05; // 轻微延迟创造层次感
                     
-                    osc.connect(gain);
+                    // 更平滑的包络
+                    gain.gain.setValueAtTime(0, t + delay);
+                    gain.gain.linearRampToValueAtTime(volume * 0.6, t + delay + 0.15);
+                    gain.gain.exponentialRampToValueAtTime(volume * 0.4, t + delay + duration * 0.6);
+                    gain.gain.exponentialRampToValueAtTime(volume * 0.2, t + delay + duration * 0.9);
+                    gain.gain.linearRampToValueAtTime(0, t + delay + duration);
+                    
+                    osc1.connect(gain);
+                    osc2.connect(gain);
                     gain.connect(this.bgmGain);
                     
-                    osc.start(t);
-                    osc.stop(t + duration);
+                    osc1.start(t + delay);
+                    osc2.start(t + delay);
+                    osc1.stop(t + delay + duration);
+                    osc2.stop(t + delay + duration);
                     
-                    this.bgmOscillators.push(osc);
+                    this.bgmOscillators.push(osc1);
+                    this.bgmOscillators.push(osc2);
                 } catch(e) {
                     console.warn("BGM播放错误:", e);
                 }
@@ -326,49 +341,76 @@ class SoundManager {
         playChord();
     }
 
-    // 播放方块消除音效（根据颜色）
+    // 播放方块消除音效（根据颜色）- 改进版，更丰富好听
     playBlockDestroy(color) {
         if (this.ctx.state === 'suspended') this.ctx.resume();
         
+        const t = this.ctx.currentTime;
+        
         switch(color) {
             case 'red':
-                // 红色：火焰爆裂声
-                this.playTone(150, 'sawtooth', 0.15, 0.15, 80);
-                this.playTone(200, 'square', 0.1, 0.12, 100);
+                // 红色：火焰爆裂声 - 多层次爆裂效果
+                this.playTone(120, 'sawtooth', 0.2, 0.2, 60);
+                setTimeout(() => this.playTone(180, 'square', 0.15, 0.18, 90), 30);
+                setTimeout(() => this.playTone(250, 'sawtooth', 0.1, 0.15, 120), 60);
+                // 添加火花声
+                for(let i = 0; i < 3; i++) {
+                    setTimeout(() => this.playTone(300 + Math.random() * 200, 'square', 0.05, 0.1), 80 + i * 20);
+                }
                 break;
             case 'blue':
-                // 蓝色：水波/冰晶破碎
-                this.playTone(600, 'triangle', 0.12, 0.15, 300);
-                this.playTone(900, 'sine', 0.08, 0.1, 500);
+                // 蓝色：水波/冰晶破碎 - 清脆的破碎声
+                this.playTone(800, 'triangle', 0.15, 0.2, 400);
+                setTimeout(() => this.playTone(1200, 'sine', 0.12, 0.18, 600), 40);
+                setTimeout(() => this.playTone(1600, 'triangle', 0.08, 0.15, 800), 80);
+                // 添加回响
+                setTimeout(() => this.playTone(600, 'sine', 0.1, 0.12, 300), 120);
                 break;
             case 'green':
-                // 绿色：自然/植物声音
-                this.playTone(350, 'sine', 0.1, 0.12, 200);
-                this.playTone(450, 'triangle', 0.08, 0.1, 300);
+                // 绿色：自然/植物声音 - 柔和的自然音
+                this.playTone(400, 'sine', 0.18, 0.2, 250);
+                setTimeout(() => this.playTone(500, 'triangle', 0.15, 0.18, 350), 50);
+                setTimeout(() => this.playTone(600, 'sine', 0.12, 0.15, 450), 100);
                 break;
             case 'purple':
-                // 紫色：魔法/神秘音效
-                this.playTone(400, 'sine', 0.2, 0.15, 200);
-                this.playTone(300, 'sine', 0.15, 0.12, 150);
+                // 紫色：魔法/神秘音效 - 神秘的和弦
+                this.playTone(350, 'sine', 0.25, 0.2, 200);
+                setTimeout(() => this.playTone(440, 'sine', 0.2, 0.18, 250), 60);
+                setTimeout(() => this.playTone(523, 'sine', 0.15, 0.15, 300), 120);
+                // 添加低音共鸣
+                setTimeout(() => this.playTone(220, 'sine', 0.2, 0.15, 150), 100);
                 break;
             case 'white':
-                // 白色：玻璃/冰晶
-                this.playTone(1200, 'triangle', 0.1, 0.12, 800);
-                this.playTone(1500, 'sine', 0.08, 0.1, 1000);
+                // 白色：玻璃/冰晶 - 高音清脆
+                this.playTone(1400, 'triangle', 0.15, 0.2, 900);
+                setTimeout(() => this.playTone(1800, 'sine', 0.12, 0.18, 1100), 40);
+                setTimeout(() => this.playTone(2200, 'triangle', 0.1, 0.15, 1300), 80);
+                // 添加清脆的尾音
+                setTimeout(() => this.playTone(1600, 'sine', 0.08, 0.12, 1000), 120);
                 break;
             case 'orange':
-                // 橙色：酸性/腐蚀
-                this.playTone(500, 'square', 0.1, 0.12, 300);
-                this.playTone(600, 'square', 0.08, 0.1, 400);
+                // 橙色：酸性/腐蚀 - 嘶嘶声
+                this.playTone(450, 'square', 0.15, 0.2, 250);
+                setTimeout(() => this.playTone(550, 'square', 0.12, 0.18, 350), 40);
+                // 添加腐蚀声
+                for(let i = 0; i < 4; i++) {
+                    setTimeout(() => this.playTone(400 + Math.random() * 200, 'square', 0.06, 0.1), 60 + i * 25);
+                }
                 break;
             case 'yellow':
-                // 黄色：电击/能量
-                this.playTone(800, 'sawtooth', 0.1, 0.15, 400);
-                this.playTone(1000, 'sawtooth', 0.08, 0.12, 600);
+                // 黄色：电击/能量 - 电火花声
+                this.playTone(700, 'sawtooth', 0.15, 0.2, 350);
+                setTimeout(() => this.playTone(900, 'sawtooth', 0.12, 0.18, 500), 30);
+                setTimeout(() => this.playTone(1100, 'sawtooth', 0.1, 0.15, 650), 60);
+                // 添加电火花
+                for(let i = 0; i < 3; i++) {
+                    setTimeout(() => this.playTone(800 + Math.random() * 400, 'sawtooth', 0.05, 0.12), 80 + i * 30);
+                }
                 break;
             default:
-                // 默认：通用消除音
-                this.playTone(400, 'sine', 0.12, 0.1, 200);
+                // 默认：通用消除音 - 更悦耳
+                this.playTone(450, 'sine', 0.15, 0.15, 250);
+                setTimeout(() => this.playTone(550, 'triangle', 0.12, 0.12, 350), 50);
         }
     }
 }

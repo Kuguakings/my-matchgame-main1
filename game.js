@@ -27,13 +27,13 @@ let nextTileId = 0; // Unique ID for animations
 let levelTargets = {}; // { color: count }
 
 // 游戏状态保存相关常量（已移至 modules/game-state.js）
-// 使用模块中的常量，如果模块未加载则使用默认值
-const LEVEL_STATE_KEY_PREFIX = (() => {
+// 使用函数获取常量值，避免重复声明
+function getLevelStateKeyPrefix() {
   if (window.GameStateManager && window.GameStateManager.LEVEL_STATE_KEY_PREFIX) {
     return window.GameStateManager.LEVEL_STATE_KEY_PREFIX;
   }
   return "mymatch_level_state_v1_";
-})();
+}
 
 // 默认颜色权重配置（用于没有设置权重的关卡）
 // 红、白、蓝、紫、绿各占16%（共80%）
@@ -3793,7 +3793,7 @@ function saveGameState() {
         targetScore: targetScore,
         savedAt: Date.now(),
       };
-      const key = LEVEL_STATE_KEY_PREFIX + level;
+      const key = getLevelStateKeyPrefix() + level;
       localStorage.setItem(key, JSON.stringify(gameState));
       console.log(`游戏状态已保存: 关卡 ${level}`);
     } catch (err) {
@@ -3813,7 +3813,7 @@ function loadGameState(levelId) {
   } else {
     // 回退到本地实现
     try {
-      const key = LEVEL_STATE_KEY_PREFIX + levelId;
+      const key = getLevelStateKeyPrefix() + levelId;
       const savedState = localStorage.getItem(key);
       if (!savedState) return null;
       const state = JSON.parse(savedState);
@@ -3841,7 +3841,7 @@ function clearGameState(levelId) {
   } else {
     // 回退到本地实现
     try {
-      const key = LEVEL_STATE_KEY_PREFIX + levelId;
+      const key = getLevelStateKeyPrefix() + levelId;
       localStorage.removeItem(key);
       console.log(`游戏状态已清除: 关卡 ${levelId}`);
     } catch (err) {

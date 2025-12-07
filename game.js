@@ -162,24 +162,23 @@ function loadGameData() {
       console.warn("loadSettings failed:", e);
     }
 
-    if (typeof loadLevels === "function") {
-      loadLevels()
-        .then(() => {
-          // 数据加载完成后初始化游戏（但不显示菜单，等待用户点击开始游戏）
-          initGame();
-          resolve();
-        })
-        .catch((err) => {
-          console.warn("loadLevels failed:", err);
-          // 即使失败也初始化游戏
-          initGame();
-          resolve();
-        });
-    } else {
-      // 如果没有 loadLevels 函数，直接初始化
-      initGame();
-      resolve();
-    }
+    // 确保 loadLevels 总是返回一个 Promise
+    const loadLevelsPromise = typeof loadLevels === "function" 
+      ? loadLevels() 
+      : Promise.resolve();
+
+    loadLevelsPromise
+      .then(() => {
+        // 数据加载完成后初始化游戏（但不显示菜单，等待用户点击开始游戏）
+        initGame();
+        resolve();
+      })
+      .catch((err) => {
+        console.warn("loadLevels failed:", err);
+        // 即使失败也初始化游戏
+        initGame();
+        resolve();
+      });
   });
 }
 
@@ -3659,7 +3658,53 @@ async function loadLevels() {
   } else {
     // 回退到本地实现（保持原有逻辑）
     console.warn("LevelManager 模块未加载，使用回退实现");
-    // 这里可以保留原有的本地实现，但为了简化，我们假设模块总是会被加载
+    // 提供基本的回退实现，确保总是返回 Promise
+    try {
+      const urlWithTimestamp = `/api/levels?t=${Date.now()}`;
+      const resp = await fetch(urlWithTimestamp, {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const result = await resp.json();
+
+      if (result.success && Array.isArray(result.levels)) {
+        window.LEVELS = result.levels;
+      } else if (Array.isArray(result)) {
+        window.LEVELS = result;
+      } else {
+        throw new Error("API 返回格式错误");
+      }
+
+      console.log("关卡加载成功，关卡数量：", window.LEVELS.length);
+      
+      // 触发事件
+      document.dispatchEvent(
+        new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
+      );
+    } catch (err) {
+      console.warn("无法通过 API 加载关卡，使用内置回退关卡。错误：", err);
+      // 使用内置回退关卡
+      window.LEVELS = [{
+        id: 1,
+        name: "入门练习",
+        unlocked: true,
+        moves: 25,
+        targets: [{ type: "score", count: 5000 }],
+        theme: "plain",
+        stars: [3000, 6000, 10000],
+        description: "内置回退：第1关",
+      }];
+      
+      document.dispatchEvent(
+        new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
+      );
+    }
   }
 }
 
@@ -3678,6 +3723,36 @@ function saveProgress() {
 function loadSettings() {
   if (window.LevelManager && window.LevelManager.loadSettings) {
     return window.LevelManager.loadSettings();
+  } else {
+    // 回退到本地实现
+    try {
+      const SETTINGS_KEY = "mymatch_settings_v1";
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) {
+        // 初始化默认设置
+        if (!window.GameSettings) {
+          window.GameSettings = {
+            autoJumpNext: false,
+          };
+        }
+        return;
+      }
+      const s = JSON.parse(raw);
+      if (s && typeof s === "object") {
+        if (!window.GameSettings) {
+          window.GameSettings = {};
+        }
+        window.GameSettings = Object.assign(window.GameSettings, s);
+      }
+    } catch (e) {
+      console.warn("加载设置失败", e);
+      // 确保有默认设置
+      if (!window.GameSettings) {
+        window.GameSettings = {
+          autoJumpNext: false,
+        };
+      }
+    }
   }
 }
 

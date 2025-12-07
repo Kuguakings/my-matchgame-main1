@@ -4401,6 +4401,23 @@ function showMenu() {
 // 菜单控制与关卡渲染 (Menu Controller + Renderer)
 // - 依赖 window.LEVELS 与 LevelManager
 // ---------------------------
+
+/**
+ * 规范化图片路径：将 assets/ 转换为 ../assets/（适配 src/js 目录结构）
+ * @param {string} path - 原始路径
+ * @returns {string} 规范化后的路径
+ */
+function normalizeAssetPath(path) {
+  if (!path || typeof path !== 'string') return path;
+  // 如果是 DataURL，直接返回
+  if (path.startsWith('data:')) return path;
+  // 如果是 assets/ 开头的相对路径，转换为 ../assets/
+  if (path.startsWith('assets/')) {
+    return '../' + path;
+  }
+  return path;
+}
+
 function renderLevelMenu() {
   const grid = document.getElementById("level-grid");
   if (!grid) return;
@@ -4417,7 +4434,8 @@ function renderLevelMenu() {
     thumb.className = "level-thumb";
     // 如果提供了缩略图则使用之；否则使用一个深色渐变作为占位符。
     if (l.thumbnail) {
-      thumb.style.backgroundImage = `url('${l.thumbnail}')`;
+      const thumbnailPath = normalizeAssetPath(l.thumbnail);
+      thumb.style.backgroundImage = `url('${thumbnailPath}')`;
       thumb.setAttribute("role", "img");
       thumb.setAttribute("aria-label", `关卡 ${l.id} 缩略图`);
     } else {
@@ -6108,7 +6126,8 @@ function openLevelEditor() {
     descInput.value = lvl.description || "";
     const sarr = Array.isArray(lvl.stars) ? lvl.stars : [];
     for (let i = 0; i < 3; i++) starInputs[i].value = sarr[i] || 0;
-    thumbPreview.src = lvl.thumbnail || "";
+    const normalizedThumbnail = normalizeAssetPath(lvl.thumbnail || "");
+    thumbPreview.src = normalizedThumbnail;
     currentDraft.thumbnail = lvl.thumbnail || "";
     currentDraft.targets = Array.isArray(lvl.targets)
       ? JSON.parse(JSON.stringify(lvl.targets))

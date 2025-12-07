@@ -1145,7 +1145,8 @@ async function processMatches(initialMatches = null, swapFocus = null) {
   try {
     while (matchGroups.length > 0) {
       combo++;
-      audio.playMatch(combo);
+      // 不再使用旧的playMatch，改用方块消除音效（在removeMatches中播放）
+      // audio.playMatch(combo);
 
       let tilesToRemove = new Set();
       let specialCreations = []; // {r, c, type, color}
@@ -1713,6 +1714,11 @@ async function removeMatches(matches) {
       const particleCount = 5 + Math.floor(Math.random() * 4);
       for (let i = 0; i < particleCount; i++) {
         createParticle(r, c, "crush", tile.color);
+      }
+
+      // 播放方块消除音效
+      if (typeof audio !== "undefined" && audio.playBlockDestroy) {
+        audio.playBlockDestroy(tile.color);
       }
     }
 
@@ -3952,7 +3958,13 @@ function startLevel(id) {
   hideMenu();
 
   // 应用关卡主题到游戏界面
-  applyLevelTheme(lvlDef?.theme || "plain");
+  const theme = lvlDef?.theme || "plain";
+  applyLevelTheme(theme);
+
+  // 播放主题背景音乐
+  if (typeof audio !== "undefined" && audio.playThemeBGM) {
+    audio.playThemeBGM(theme);
+  }
 
   // render UI and board
   updateTargetUI();
@@ -4126,7 +4138,7 @@ function showLevelSelection() {
     });
     renderLevelMenu();
 
-    // 初始化关卡编辑器按钮（在关卡列表中）
+    // 初始化关卡编辑器按钮（在菜单按钮组中）
     const editorBtn = document.getElementById("btn-level-editor-panel");
     if (editorBtn && !editorBtn.hasAttribute("data-initialized")) {
       editorBtn.setAttribute("data-initialized", "true");

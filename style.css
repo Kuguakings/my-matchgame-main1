@@ -219,11 +219,8 @@ body {
   transform: translateY(-1px);
 }
 
-/* 关卡编辑器按钮（右上角） */
+/* 关卡编辑器按钮（在菜单按钮组中） */
 .level-editor-btn {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
   padding: 0.6rem 1.2rem;
   font-size: clamp(0.8rem, 2vw, 1rem);
   background: rgba(255, 255, 255, 0.1);
@@ -233,7 +230,6 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
-  z-index: 100;
 }
 
 .level-editor-btn:hover {
@@ -838,7 +834,9 @@ body {
   display: flex;
   gap: 10px;
   justify-content: center;
+  align-items: center;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 #menu-buttons button {
   padding: 8px 14px;
@@ -847,15 +845,37 @@ body {
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#menu-buttons button:hover {
+  background: #333;
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 .level-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
   max-height: 60vh;
   overflow: auto;
   padding: 6px;
-  margin-top: 2.5rem; /* 为关卡编辑器按钮留出空间 */
+}
+
+/* 平板适配：3列 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .level-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 移动端适配：2列 */
+@media (max-width: 768px) {
+  .level-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 4px;
+  }
 }
 .level-card {
   background: linear-gradient(180deg, #181818, #0f0f0f);
@@ -1495,8 +1515,8 @@ body {
 /* 编辑器右上角关闭按钮 */
 .editor-close-top {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0.5rem;
+  right: 0.5rem;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;

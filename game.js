@@ -1716,9 +1716,17 @@ async function removeMatches(matches) {
         createParticle(r, c, "crush", tile.color);
       }
 
-      // 播放方块消除音效
-      if (typeof audio !== "undefined" && audio.playBlockDestroy) {
-        audio.playBlockDestroy(tile.color);
+      // 播放方块消除音效（使用try-catch防止音效错误影响游戏）
+      try {
+        if (
+          typeof audio !== "undefined" &&
+          audio.playBlockDestroy &&
+          tile.color
+        ) {
+          audio.playBlockDestroy(tile.color);
+        }
+      } catch (e) {
+        console.warn("音效播放错误:", e);
       }
     }
 
@@ -3961,9 +3969,13 @@ function startLevel(id) {
   const theme = lvlDef?.theme || "plain";
   applyLevelTheme(theme);
 
-  // 播放主题背景音乐
-  if (typeof audio !== "undefined" && audio.playThemeBGM) {
-    audio.playThemeBGM(theme);
+  // 播放主题背景音乐（使用try-catch防止音效错误影响游戏）
+  try {
+    if (typeof audio !== "undefined" && audio.playThemeBGM) {
+      audio.playThemeBGM(theme);
+    }
+  } catch (e) {
+    console.warn("背景音乐播放错误:", e);
   }
 
   // render UI and board

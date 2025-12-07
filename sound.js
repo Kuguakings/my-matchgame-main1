@@ -181,16 +181,31 @@ class SoundManager {
 
     // 停止当前背景音乐
     stopBGM() {
-        if (this.bgmOscillators.length > 0) {
-            this.bgmOscillators.forEach(osc => {
-                try { osc.stop(); } catch(e) {}
-            });
-            this.bgmOscillators = [];
-        }
+        // 先清空oscillators数组，防止循环继续
+        const oscillators = [...this.bgmOscillators];
+        this.bgmOscillators = [];
+        
+        // 停止所有oscillators
+        oscillators.forEach(osc => {
+            try { 
+                osc.stop(); 
+                osc.disconnect();
+            } catch(e) {
+                // 忽略已停止的oscillator错误
+            }
+        });
+        
+        // 断开并清空gain
         if (this.bgmGain) {
-            try { this.bgmGain.disconnect(); } catch(e) {}
+            try { 
+                this.bgmGain.disconnect(); 
+            } catch(e) {
+                // 忽略已断开的错误
+            }
             this.bgmGain = null;
         }
+        
+        this.currentTheme = null;
     }
 
     // 播放主题背景音乐
@@ -267,32 +282,43 @@ class SoundManager {
 
     // 播放背景音乐和弦（循环）
     playBGMChord(frequencies, volume, duration) {
+        // 检查bgmGain是否存在
+        if (!this.bgmGain) return;
+        
         const playChord = () => {
+            // 再次检查，防止在循环过程中被停止
+            if (!this.bgmGain) return;
+            
             frequencies.forEach((freq, i) => {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.value = freq;
-                
-                const t = this.ctx.currentTime;
-                gain.gain.setValueAtTime(0, t);
-                gain.gain.linearRampToValueAtTime(volume, t + 0.1);
-                gain.gain.exponentialRampToValueAtTime(volume * 0.3, t + duration * 0.8);
-                gain.gain.linearRampToValueAtTime(0, t + duration);
-                
-                osc.connect(gain);
-                gain.connect(this.bgmGain);
-                
-                osc.start(t);
-                osc.stop(t + duration);
-                
-                this.bgmOscillators.push(osc);
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    const t = this.ctx.currentTime;
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(volume, t + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(volume * 0.3, t + duration * 0.8);
+                    gain.gain.linearRampToValueAtTime(0, t + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.bgmGain);
+                    
+                    osc.start(t);
+                    osc.stop(t + duration);
+                    
+                    this.bgmOscillators.push(osc);
+                } catch(e) {
+                    console.warn("BGM播放错误:", e);
+                }
             });
             
             // 循环播放
             setTimeout(() => {
-                if (this.bgmOscillators.length === 0) return; // 如果已停止，不再循环
+                // 检查bgmGain和oscillators状态
+                if (!this.bgmGain || this.bgmOscillators.length === 0) return;
                 playChord();
             }, duration * 1000);
         };

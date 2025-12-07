@@ -69,6 +69,25 @@
       </div>
     </div>
     
+    <!-- 菜单覆盖层 -->
+    <div id="menu-overlay" class="hidden" aria-hidden="true">
+      <div id="main-menu">
+        <h2>关卡选择</h2>
+        <div id="menu-buttons">
+          <button id="btn-levels">关卡列表</button>
+          <button id="btn-close-menu">关闭</button>
+        </div>
+        <div id="level-panel" class="hidden">
+          <div id="level-grid" class="level-grid">
+            <!-- Level cards will be injected here by JS -->
+          </div>
+          <div class="level-footer">
+            <button id="btn-back-to-main">返回</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <script src="sound.js"></script>
     <script src="game.js"></script>
   </body>

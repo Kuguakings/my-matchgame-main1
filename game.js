@@ -30,17 +30,17 @@ const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
 
 // 默认颜色权重配置（用于没有设置权重的关卡）
 const DEFAULT_COLOR_WEIGHTS = {
-  "red": 12,
-  "blue": 12,
-  "green": 12,
-  "purple": 12,
-  "white": 12,
-  "orange": 20,
-  "yellow": 20
+  red: 12,
+  blue: 12,
+  green: 12,
+  purple: 12,
+  white: 12,
+  orange: 20,
+  yellow: 20,
 };
 
 // 当前关卡的颜色权重配置
-let currentLevelWeights = {...DEFAULT_COLOR_WEIGHTS};
+let currentLevelWeights = { ...DEFAULT_COLOR_WEIGHTS };
 
 const gridContainer = document.getElementById("grid-container");
 const scoreDisplay = document.getElementById("score");
@@ -74,61 +74,67 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     { once: true }
   );
-  
+
   // 在用户离开页面时保存游戏状态
-  window.addEventListener('beforeunload', () => {
+  window.addEventListener("beforeunload", () => {
     // 在用户离开页面时保存游戏状态
     if (level && board) {
       saveGameState();
     }
   });
-  
+
   // 添加权重输入框事件监听器（仅在编辑器中存在这些元素）
-  const weightInputs = document.querySelectorAll('.color-weight-input');
+  const weightInputs = document.querySelectorAll(".color-weight-input");
   if (weightInputs.length > 0) {
-    const weightsTotal = document.getElementById('weights-total');
-    
-    weightInputs.forEach(input => {
+    const weightsTotal = document.getElementById("weights-total");
+
+    weightInputs.forEach((input) => {
       // 添加事件监听器
-      input.addEventListener('input', function() {
+      input.addEventListener("input", function () {
         const color = this.dataset.color;
         const weight = parseInt(this.value) || 0;
-        
+
         // 更新当前权重配置
         currentLevelWeights[color] = weight;
-        
+
         // 计算总权重
-        const total = Object.values(currentLevelWeights).reduce((sum, w) => sum + w, 0);
+        const total = Object.values(currentLevelWeights).reduce(
+          (sum, w) => sum + w,
+          0
+        );
         if (weightsTotal) {
           weightsTotal.textContent = total;
-          weightsTotal.style.color = total === 100 ? 'green' : 'red';
+          weightsTotal.style.color = total === 100 ? "green" : "red";
         }
       });
     });
   }
-  
+
   // 添加更新编辑器权重输入框的函数
   function updateEditorWeightInputs() {
     // 只在编辑器模式下更新权重输入框
-    const weightInputs = document.querySelectorAll('.color-weight-input');
+    const weightInputs = document.querySelectorAll(".color-weight-input");
     if (weightInputs.length === 0) return; // 不在编辑器中，直接返回
-    
-    weightInputs.forEach(input => {
+
+    weightInputs.forEach((input) => {
       const color = input.dataset.color;
       if (currentLevelWeights[color] !== undefined) {
         input.value = currentLevelWeights[color];
       }
     });
-    
+
     // 更新总计显示
-    const weightsTotal = document.getElementById('weights-total');
+    const weightsTotal = document.getElementById("weights-total");
     if (weightsTotal) {
-      const total = Object.values(currentLevelWeights).reduce((sum, w) => sum + w, 0);
+      const total = Object.values(currentLevelWeights).reduce(
+        (sum, w) => sum + w,
+        0
+      );
       weightsTotal.textContent = total;
-      weightsTotal.style.color = total === 100 ? 'green' : 'red';
+      weightsTotal.style.color = total === 100 ? "green" : "red";
     }
   }
-  
+
   // Load user settings and levels BEFORE starting the first level.
   try {
     loadSettings();
@@ -157,9 +163,12 @@ document.addEventListener("DOMContentLoaded", () => {
   - 返回值为 COLORS 数组内的一项。
 */
 function getWeightedRandomColor() {
-  const totalWeight = Object.values(currentLevelWeights).reduce((sum, weight) => sum + weight, 0);
+  const totalWeight = Object.values(currentLevelWeights).reduce(
+    (sum, weight) => sum + weight,
+    0
+  );
   let r = Math.random() * totalWeight;
-  
+
   for (const [color, weight] of Object.entries(currentLevelWeights)) {
     if (r < weight) return color;
     r -= weight;
@@ -186,22 +195,25 @@ function applyFreeze(tile) {
 // 添加更新编辑器权重输入框的函数
 function updateEditorWeightInputs() {
   // 只在编辑器模式下更新权重输入框
-  const weightInputs = document.querySelectorAll('.color-weight-input');
+  const weightInputs = document.querySelectorAll(".color-weight-input");
   if (weightInputs.length === 0) return; // 不在编辑器中，直接返回
-  
-  weightInputs.forEach(input => {
+
+  weightInputs.forEach((input) => {
     const color = input.dataset.color;
     if (currentLevelWeights[color] !== undefined) {
       input.value = currentLevelWeights[color];
     }
   });
-  
+
   // 更新总计显示
-  const weightsTotal = document.getElementById('weights-total');
+  const weightsTotal = document.getElementById("weights-total");
   if (weightsTotal) {
-    const total = Object.values(currentLevelWeights).reduce((sum, w) => sum + w, 0);
+    const total = Object.values(currentLevelWeights).reduce(
+      (sum, w) => sum + w,
+      0
+    );
     weightsTotal.textContent = total;
-    weightsTotal.style.color = total === 100 ? 'green' : 'red';
+    weightsTotal.style.color = total === 100 ? "green" : "red";
   }
 }
 
@@ -497,9 +509,12 @@ function createBoard(initialLayout = null) {
   - 返回值为 COLORS 数组内的一项。
 */
 function getWeightedRandomColor() {
-  const totalWeight = Object.values(currentLevelWeights).reduce((sum, weight) => sum + weight, 0);
+  const totalWeight = Object.values(currentLevelWeights).reduce(
+    (sum, weight) => sum + weight,
+    0
+  );
   let r = Math.random() * totalWeight;
-  
+
   for (const [color, weight] of Object.entries(currentLevelWeights)) {
     if (r < weight) return color;
     r -= weight;
@@ -518,12 +533,27 @@ function applyFreeze(tile) {
 }
 
 function renderBoard() {
+  // 防御性检查：确保 board 数组已正确初始化
+  if (!board || !Array.isArray(board) || board.length !== GRID_SIZE) {
+    console.error("Board not properly initialized, recreating...");
+    createBoard();
+  }
+
   gridContainer.innerHTML = "";
   gridContainer.appendChild(vfxContainer);
 
   for (let r = 0; r < GRID_SIZE; r++) {
+    // 确保每一行都存在
+    if (!board[r] || !Array.isArray(board[r])) {
+      console.error(
+        `Board row ${r} not properly initialized, recreating board...`
+      );
+      createBoard();
+      // 重新创建后继续渲染（board 已重新创建）
+    }
+
     for (let c = 0; c < GRID_SIZE; c++) {
-      const tile = board[r][c];
+      const tile = board[r] && board[r][c] ? board[r][c] : null;
 
       const cell = document.createElement("div");
       cell.style.gridRowStart = r + 1;
@@ -2037,7 +2067,7 @@ async function handlePurpleMatch3(r, c, matchGroupTiles) {
     cell.style.transform = "scale(1)";
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
-  
+
   return true;
 }
 
@@ -2254,14 +2284,14 @@ async function handleWhiteMatch4(removalSet) {
 function getConnectedFrozenTiles(r, c, connectedSet) {
   // 边界检查和安全检查
   if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
-  
+
   const key = `${r},${c}`;
   if (connectedSet.has(key)) return;
-  
+
   const tile = board[r][c];
   // 确保方块存在且是冰冻状态
   if (!tile || tile.state !== "frozen") return;
-  
+
   connectedSet.add(key);
 
   const neighbors = [
@@ -2294,7 +2324,7 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
   if (!baseRemovalSet || baseRemovalSet.size === 0) {
     return [];
   }
-  
+
   // wave0 = 当前要消除的所有块（已在 finalRemovalSet 中）
   const waves = [];
   const allRemoved = new Set(baseRemovalSet);
@@ -2314,16 +2344,16 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
   // 添加最大迭代次数防止无限循环
   let iterations = 0;
   const maxIterations = 100;
-  
+
   while (iterations < maxIterations) {
     iterations++;
     const nextWaveSet = new Set();
-    
+
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
         const key = `${r},${c}`;
         if (allRemoved.has(key)) continue;
-        
+
         const tile = board[r][c];
         // 确保方块存在且是冰冻状态
         if (!tile || tile.state !== "frozen") continue;
@@ -2334,7 +2364,7 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
           `${r},${c - 1}`,
           `${r},${c + 1}`,
         ];
-        
+
         for (const n of neighbors) {
           // 检查邻居是否在前一波中
           if (prevWave.has(n)) {
@@ -2347,7 +2377,7 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
 
     // 如果没有更多的波次，结束循环
     if (nextWaveSet.size === 0) break;
-    
+
     // 添加到已移除集合和波次列表
     nextWaveSet.forEach((k) => allRemoved.add(k));
     waves.push(setToList(nextWaveSet));
@@ -2369,11 +2399,13 @@ async function handleFrozenShatter(r, c) {
       if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE && board[i][j]) {
         // 添加额外的安全检查，确保方块存在且有效
         const tile = board[i][j];
-        if (tile && 
-            tile.color === "white" &&
-            tile.state !== "frozen" &&
-            tile.type !== "gold" &&
-            tile.type !== "fusion-core") {
+        if (
+          tile &&
+          tile.color === "white" &&
+          tile.state !== "frozen" &&
+          tile.type !== "gold" &&
+          tile.type !== "fusion-core"
+        ) {
           applyFreeze(tile);
         }
       }
@@ -2428,7 +2460,7 @@ async function handleOrangeMatch3(r, c) {
 
   renderBoard();
   await new Promise((resolve) => setTimeout(resolve, 300));
-  
+
   return true;
 }
 
@@ -3314,18 +3346,18 @@ async function loadLevels() {
   try {
     // 添加时间戳以避免缓存
     const urlWithTimestamp = `${LEVELS_URL}?t=${Date.now()}`;
-    const resp = await fetch(urlWithTimestamp, { 
-      method: 'GET',
+    const resp = await fetch(urlWithTimestamp, {
+      method: "GET",
       headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     });
-    
+
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     const result = await resp.json();
-    
+
     // 检查响应格式
     if (result.success && Array.isArray(result.levels)) {
       window.LEVELS = result.levels;
@@ -3335,13 +3367,10 @@ async function loadLevels() {
     } else {
       throw new Error("API 返回格式错误");
     }
-    
+
     console.log("关卡加载成功，关卡数量：", window.LEVELS.length);
   } catch (err) {
-    console.warn(
-      "无法通过 API 加载关卡，使用内置回退关卡。错误：",
-      err
-    );
+    console.warn("无法通过 API 加载关卡，使用内置回退关卡。错误：", err);
     window.LEVELS = _embeddedFallbackLevels.slice();
   }
 
@@ -3404,16 +3433,16 @@ function saveGameState() {
   try {
     // 只有在游戏进行中才保存状态
     if (!level || !board) return;
-    
+
     const gameState = {
       level: level,
       score: score,
       board: board,
       levelTargets: levelTargets,
       targetScore: targetScore,
-      savedAt: Date.now()
+      savedAt: Date.now(),
     };
-    
+
     const key = LEVEL_STATE_KEY_PREFIX + level;
     localStorage.setItem(key, JSON.stringify(gameState));
     console.log(`游戏状态已保存: 关卡 ${level}`);
@@ -3431,9 +3460,9 @@ function loadGameState(levelId) {
     const key = LEVEL_STATE_KEY_PREFIX + levelId;
     const savedState = localStorage.getItem(key);
     if (!savedState) return null;
-    
+
     const state = JSON.parse(savedState);
-    
+
     // 检查状态是否有效（例如不超过一天）
     const oneDay = 24 * 60 * 60 * 1000;
     if (Date.now() - state.savedAt > oneDay) {
@@ -3441,7 +3470,7 @@ function loadGameState(levelId) {
       clearGameState(levelId);
       return null;
     }
-    
+
     return state;
   } catch (err) {
     console.warn("加载游戏状态失败：", err);
@@ -3474,17 +3503,20 @@ function restoreGameState(state) {
   board = state.board;
   levelTargets = state.levelTargets;
   targetScore = state.targetScore;
-  
+
   // 更新UI
   if (levelDisplay) levelDisplay.textContent = level;
   if (scoreDisplay) scoreDisplay.textContent = `${score} / ${targetScore}`;
-  
+
   // 更新目标面板
   updateTargetUI();
-  
+
   // 渲染棋盘
   renderBoard();
-  
+
+  // 确保菜单被隐藏
+  hideMenu();
+
   console.log(`游戏状态已恢复: 关卡 ${level}`);
 }
 
@@ -3527,8 +3559,8 @@ window.LevelManager = {
 */
 function startLevel(id) {
   // 重置当前关卡权重为默认值
-  currentLevelWeights = {...DEFAULT_COLOR_WEIGHTS};
-  
+  currentLevelWeights = { ...DEFAULT_COLOR_WEIGHTS };
+
   // normalize id
   const want = Number(id) || 1;
   const lvlDef = getLevelById(want);
@@ -3559,7 +3591,10 @@ function startLevel(id) {
 
   // 如果关卡有自定义权重设置，则使用它
   if (lvlDef && lvlDef.specialRules && lvlDef.specialRules.colorWeights) {
-    currentLevelWeights = {...currentLevelWeights, ...lvlDef.specialRules.colorWeights};
+    currentLevelWeights = {
+      ...currentLevelWeights,
+      ...lvlDef.specialRules.colorWeights,
+    };
   }
 
   // Update editor weight inputs if editor is open
@@ -3648,6 +3683,9 @@ function startLevel(id) {
   updateTargetUI();
   createBoard(lvlDef?.initialBoard);
   renderBoard();
+
+  // Ensure menu is hidden when starting a level
+  hideMenu();
 }
 
 /*

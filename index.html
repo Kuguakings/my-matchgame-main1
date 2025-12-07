@@ -29,8 +29,6 @@
           <button id="btn-settings" class="main-menu-btn">设置</button>
           <button id="btn-quit-game" class="main-menu-btn">退出游戏</button>
         </div>
-        <!-- 关卡编辑器按钮（右上角） -->
-        <button id="btn-level-editor-main" class="level-editor-btn">关卡编辑器</button>
       </div>
     </div>
 
@@ -102,8 +100,12 @@
           <button id="btn-close-menu">关闭</button>
         </div>
         <div id="level-panel" class="hidden">
-          <div id="level-grid" class="level-grid">
-            <!-- Level cards will be injected here by JS -->
+          <div style="position: relative;">
+            <!-- 关卡编辑器按钮（右上角） -->
+            <button id="btn-level-editor-panel" class="level-editor-btn" style="position: absolute; top: 0; right: 0; z-index: 10;">关卡编辑器</button>
+            <div id="level-grid" class="level-grid">
+              <!-- Level cards will be injected here by JS -->
+            </div>
           </div>
           <div class="level-footer">
             <button id="btn-back-to-main">返回</button>

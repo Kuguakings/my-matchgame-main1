@@ -214,14 +214,26 @@ function hideLoadingScreen() {
 function showMainMenu() {
   const mainMenuScreen = document.getElementById("main-menu-screen");
   if (mainMenuScreen) {
+    mainMenuScreen.style.opacity = "0";
     mainMenuScreen.classList.remove("hidden");
     mainMenuScreen.style.display = "flex";
+    // 淡入动画
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        mainMenuScreen.style.transition = "opacity 0.3s ease-in";
+        mainMenuScreen.style.opacity = "1";
+      });
+    });
   }
 
   // 隐藏游戏容器
   const gameContainer = document.getElementById("game-container");
   if (gameContainer) {
-    gameContainer.classList.add("hidden");
+    gameContainer.style.transition = "opacity 0.3s ease-out";
+    gameContainer.style.opacity = "0";
+    setTimeout(() => {
+      gameContainer.classList.add("hidden");
+    }, 300);
   }
 }
 
@@ -232,7 +244,11 @@ function showMainMenu() {
 function hideMainMenu() {
   const mainMenuScreen = document.getElementById("main-menu-screen");
   if (mainMenuScreen) {
-    mainMenuScreen.classList.add("hidden");
+    mainMenuScreen.style.transition = "opacity 0.3s ease-out";
+    mainMenuScreen.style.opacity = "0";
+    setTimeout(() => {
+      mainMenuScreen.classList.add("hidden");
+    }, 300);
   }
 }
 
@@ -3945,10 +3961,19 @@ function startLevel(id) {
   // 再次确保菜单被隐藏（防御性，延迟一点确保 DOM 更新完成）
   setTimeout(() => {
     hideMenu();
-    // 确保游戏容器可见
+    // 确保游戏容器可见，添加淡入动画
     const gameContainer = document.getElementById("game-container");
     if (gameContainer) {
+      gameContainer.classList.remove("hidden");
+      gameContainer.style.opacity = "0";
       gameContainer.style.display = "flex";
+      // 淡入动画
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          gameContainer.style.transition = "opacity 0.3s ease-in";
+          gameContainer.style.opacity = "1";
+        });
+      });
     }
   }, 50);
 }
@@ -4008,17 +4033,7 @@ function initMainMenuButtons() {
     });
   }
 
-  // 关卡编辑器按钮（主菜单右上角）
-  const editorBtn = document.getElementById("btn-level-editor-main");
-  if (editorBtn) {
-    editorBtn.addEventListener("click", () => {
-      try {
-        openLevelEditor();
-      } catch (e) {
-        console.warn("打开关卡编辑器失败", e);
-      }
-    });
-  }
+  // 关卡编辑器按钮已移至关卡列表右上角，见关卡列表初始化代码
 
   // 返回主菜单按钮（从关卡选择界面）
   const backToMainBtn = document.getElementById("btn-back-to-main-menu");
@@ -4045,9 +4060,30 @@ function initMainMenuButtons() {
 function showLevelSelection() {
   const overlay = document.getElementById("menu-overlay");
   if (overlay) {
+    overlay.style.opacity = "0";
     overlay.classList.remove("hidden");
     overlay.style.display = "flex";
+    // 淡入动画
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.style.transition = "opacity 0.3s ease-in";
+        overlay.style.opacity = "1";
+      });
+    });
     renderLevelMenu();
+
+    // 初始化关卡编辑器按钮（在关卡列表中）
+    const editorBtn = document.getElementById("btn-level-editor-panel");
+    if (editorBtn && !editorBtn.hasAttribute("data-initialized")) {
+      editorBtn.setAttribute("data-initialized", "true");
+      editorBtn.addEventListener("click", () => {
+        try {
+          openLevelEditor();
+        } catch (e) {
+          console.warn("打开关卡编辑器失败", e);
+        }
+      });
+    }
   }
 }
 
@@ -4058,8 +4094,12 @@ function showLevelSelection() {
 function hideLevelSelection() {
   const overlay = document.getElementById("menu-overlay");
   if (overlay) {
-    overlay.classList.add("hidden");
-    overlay.style.display = "none";
+    overlay.style.transition = "opacity 0.3s ease-out";
+    overlay.style.opacity = "0";
+    setTimeout(() => {
+      overlay.classList.add("hidden");
+      overlay.style.display = "none";
+    }, 300);
   }
 }
 
@@ -4070,8 +4110,16 @@ function hideLevelSelection() {
 function showSettings() {
   const overlay = document.getElementById("settings-overlay");
   if (overlay) {
+    overlay.style.opacity = "0";
     overlay.classList.remove("hidden");
     overlay.style.display = "flex";
+    // 淡入动画
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.style.transition = "opacity 0.3s ease-in";
+        overlay.style.opacity = "1";
+      });
+    });
     renderSettings();
   }
 }
@@ -4083,8 +4131,12 @@ function showSettings() {
 function hideSettings() {
   const overlay = document.getElementById("settings-overlay");
   if (overlay) {
-    overlay.classList.add("hidden");
-    overlay.style.display = "none";
+    overlay.style.transition = "opacity 0.3s ease-out";
+    overlay.style.opacity = "0";
+    setTimeout(() => {
+      overlay.classList.add("hidden");
+      overlay.style.display = "none";
+    }, 300);
   }
 }
 
@@ -4131,6 +4183,8 @@ function renderSettings() {
 function showMenu() {
   showLevelSelection();
 }
+
+// 注意：下面还有一个showMenu定义，需要删除重复
 
 // levels 加载已在顶部 DOMContentLoaded 回调中处理（避免重复调用）
 
@@ -4293,10 +4347,7 @@ function renderLevelMenu() {
   });
 }
 
-function showMenu() {
-  // 兼容旧代码，直接调用showLevelSelection
-  showLevelSelection();
-}
+// showMenu函数已在上面定义，此处删除重复定义
 
 /* =====================
    简易关卡编辑器（JSON 编辑器）
@@ -4305,9 +4356,18 @@ function showMenu() {
    - 注意：该编辑器不会直接写磁盘上的 `levels.json`，请使用 Export 导出文件并手动替换仓库文件以提交变更。
    ===================== */
 function openLevelEditor() {
-  // 如果已存在 overlay 则直接显示
-  if (document.getElementById("level-editor-overlay")) {
-    document.getElementById("level-editor-overlay").classList.remove("hidden");
+  // 如果已存在 overlay 则直接显示（带动画）
+  const existingOverlay = document.getElementById("level-editor-overlay");
+  if (existingOverlay) {
+    existingOverlay.style.opacity = "0";
+    existingOverlay.classList.remove("hidden");
+    // 淡入动画
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        existingOverlay.style.transition = "opacity 0.3s ease-in";
+        existingOverlay.style.opacity = "1";
+      });
+    });
     return;
   }
 
@@ -5237,7 +5297,11 @@ function openLevelEditor() {
   closeBtn.type = "button";
   closeBtn.className = "editor-button";
   closeBtn.addEventListener("click", () => {
-    overlay.classList.add("hidden");
+    overlay.style.transition = "opacity 0.3s ease-out";
+    overlay.style.opacity = "0";
+    setTimeout(() => {
+      overlay.classList.add("hidden");
+    }, 300);
   });
 
   // ESC key to close
@@ -5634,6 +5698,15 @@ function openLevelEditor() {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
+  // 添加淡入动画
+  overlay.style.opacity = "0";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      overlay.style.transition = "opacity 0.3s ease-in";
+      overlay.style.opacity = "1";
+    });
+  });
+
   // state
   let selectedIndex = null;
   let currentDraft = {};
@@ -5944,10 +6017,13 @@ function hideMenu() {
     console.warn("hideMenu: menu-overlay not found");
     return;
   }
-  overlay.classList.add("hidden");
-  overlay.setAttribute("aria-hidden", "true");
-  // 强制设置 display: none 以确保隐藏
-  overlay.style.display = "none";
+  overlay.style.transition = "opacity 0.3s ease-out";
+  overlay.style.opacity = "0";
+  setTimeout(() => {
+    overlay.classList.add("hidden");
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.style.display = "none";
+  }, 300);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -5958,7 +6034,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const backBtn = document.getElementById("btn-back-to-main");
 
   if (openBtn) openBtn.addEventListener("click", () => showMenu());
-  if (closeBtn) closeBtn.addEventListener("click", () => hideMenu());
+  if (closeBtn)
+    closeBtn.addEventListener("click", () => {
+      hideMenu();
+      // 如果是从主菜单进入的，返回主菜单
+      const mainMenuScreen = document.getElementById("main-menu-screen");
+      if (mainMenuScreen && mainMenuScreen.classList.contains("hidden")) {
+        showMainMenu();
+      }
+    });
   if (backBtn)
     backBtn.addEventListener("click", () => {
       const panel = document.getElementById("level-panel");

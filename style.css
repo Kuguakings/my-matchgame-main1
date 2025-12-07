@@ -162,7 +162,8 @@ body {
   align-items: center;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   z-index: 9999;
-  transition: opacity 0.5s ease-out;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
 }
 
 #main-menu-screen.hidden {
@@ -221,8 +222,8 @@ body {
 /* 关卡编辑器按钮（右上角） */
 .level-editor-btn {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0.5rem;
+  right: 0.5rem;
   padding: 0.6rem 1.2rem;
   font-size: clamp(0.8rem, 2vw, 1rem);
   background: rgba(255, 255, 255, 0.1);
@@ -232,6 +233,7 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
+  z-index: 100;
 }
 
 .level-editor-btn:hover {
@@ -339,6 +341,13 @@ body {
   align-items: center;
   width: 90vmin;
   height: 95vmin;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+#game-container.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 #ui-header {
@@ -696,6 +705,13 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
   z-index: 3000;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+#menu-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 #settings-overlay {
@@ -706,6 +722,13 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
   z-index: 3000;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+#settings-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 #menu-buttons {
   display: flex;
@@ -728,6 +751,7 @@ body {
   max-height: 60vh;
   overflow: auto;
   padding: 6px;
+  margin-top: 2.5rem; /* 为关卡编辑器按钮留出空间 */
 }
 .level-card {
   background: linear-gradient(180deg, #181818, #0f0f0f);
@@ -1080,6 +1104,13 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.editor-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 .editor-panel {
   background: #0b0b0b;

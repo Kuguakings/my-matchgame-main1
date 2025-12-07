@@ -1092,102 +1092,322 @@ body {
   opacity: 0.95;
 }
 
-/* 编辑器样式（用于将原内联样式抽取到样式表） */
+/* 编辑器样式 - 美化版本，支持双端适配 */
 .editor-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 50%, rgba(15, 52, 96, 0.95) 100%);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   opacity: 1;
   transition: opacity 0.3s ease-in-out;
+  padding: 1rem;
+  overflow-y: auto;
 }
 
 .editor-overlay.hidden {
   opacity: 0;
   pointer-events: none;
 }
+
 .editor-panel {
-  background: #0b0b0b;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   color: #fff;
-  padding: 12px;
-  border-radius: 8px;
-  width: 94%;
-  max-width: 1100px;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border-radius: clamp(12px, 2vw, 16px);
+  width: 100%;
+  max-width: min(95vw, 1200px);
+  max-height: 95vh;
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 12px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  grid-template-columns: min(280px, 100%) 1fr;
+  gap: clamp(12px, 2vw, 20px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
 }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .editor-panel {
+    grid-template-columns: 1fr;
+    max-height: 98vh;
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .editor-left {
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  
+  .editor-right {
+    max-height: 55vh;
+  }
+}
+
 .editor-left {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.75rem;
+  min-width: 0;
 }
+
+.editor-left h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  border-bottom: 2px solid rgba(102, 126, 234, 0.5);
+  padding-bottom: 0.5rem;
+}
+
 .editor-level-list {
   flex: 1;
-  overflow: auto;
-  border: 1px solid #222;
-  padding: 6px;
-  border-radius: 6px;
-  background: #070707;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+  min-height: 200px;
+  max-height: 400px;
 }
+
 .editor-level-list .editor-list-item {
-  padding: 6px;
-  border-bottom: 1px solid #1a1a1a;
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
+  border-radius: 6px;
+  margin-bottom: 0.25rem;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.03);
 }
+
+.editor-level-list .editor-list-item:hover {
+  background: rgba(102, 126, 234, 0.2);
+  transform: translateX(4px);
+}
+
 .editor-level-list .editor-list-item.selected {
-  background: #222;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.4));
+  border-left: 3px solid #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
+
 .editor-right {
-  max-height: 80vh;
-  overflow: auto;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
 }
+
+/* 自定义滚动条 */
+.editor-right::-webkit-scrollbar,
+.editor-level-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.editor-right::-webkit-scrollbar-track,
+.editor-level-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.editor-right::-webkit-scrollbar-thumb,
+.editor-level-list::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.5);
+  border-radius: 4px;
+}
+
+.editor-right::-webkit-scrollbar-thumb:hover,
+.editor-level-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.7);
+}
+
 .editor-form {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: 1rem;
 }
+
+.editor-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+.editor-form input[type="text"],
+.editor-form input[type="number"],
+.editor-form textarea,
+.editor-form select {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.editor-form input[type="text"]:focus,
+.editor-form input[type="number"]:focus,
+.editor-form textarea:focus,
+.editor-form select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.editor-form textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
 .editor-thumb-preview {
-  max-width: 160px;
-  max-height: 90px;
+  max-width: 200px;
+  max-height: 120px;
   display: block;
   object-fit: cover;
-  background: #111;
-  border: 1px solid #222;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin: 0.5rem 0;
 }
+
 .editor-actions {
   display: flex;
-  gap: 8px;
+  gap: 0.5rem;
   flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .targets-row {
   display: flex;
-  gap: 6px;
+  gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
 }
+
 .targets-container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.5rem;
 }
+
 .editor-button {
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #222;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.8));
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
+  font-size: clamp(0.85rem, 2vw, 0.95rem);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
+
+.editor-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 1), rgba(118, 75, 162, 1));
+}
+
+.editor-button:active {
+  transform: translateY(0);
+}
+
+.editor-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 特殊按钮样式 */
+.editor-button.primary {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.editor-button.primary:hover {
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.5);
+}
+
+.editor-button.danger {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+.editor-button.danger:hover {
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+}
+
+.editor-button.secondary {
+  background: linear-gradient(135deg, rgba(158, 158, 158, 0.6), rgba(97, 97, 97, 0.6));
+}
+
 .editor-input-disabled {
-  background: #0b0b0b;
-  color: #999;
+  background: rgba(0, 0, 0, 0.2) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  cursor: not-allowed;
+}
+
+/* 表单分隔线和文本美化 */
+.editor-form hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 1.5rem 0;
+}
+
+.editor-form > div:not(.targets-row):not(.targets-container) {
+  margin-bottom: 0.5rem;
+}
+
+/* 权重容器美化 */
+.editor-form div[style*="grid"] {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 移动端按钮组优化 */
+@media (max-width: 768px) {
+  .editor-actions > div {
+    width: 100%;
+  }
+  
+  .editor-actions > div > button,
+  .editor-actions > div > label {
+    flex: 1;
+    min-width: calc(50% - 0.25rem);
+  }
+  
+  .targets-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .targets-row > * {
+    width: 100%;
+  }
 }
 
 .batch-mode-toggle {

@@ -4390,8 +4390,8 @@ function openLevelEditor() {
   list.className = "editor-level-list";
 
   const addBtn = document.createElement("button");
-  addBtn.className = "editor-button";
-  addBtn.textContent = "添加新关卡";
+  addBtn.className = "editor-button primary";
+  addBtn.textContent = "➕ 添加";
   addBtn.addEventListener("click", () => {
     const newId =
       (window.LEVELS || []).reduce((m, v) => Math.max(m, v.id || 0), 0) + 1;
@@ -4415,8 +4415,8 @@ function openLevelEditor() {
   });
 
   const copyBtn = document.createElement("button");
-  copyBtn.className = "editor-button";
-  copyBtn.textContent = "复制所选关卡";
+  copyBtn.className = "editor-button secondary";
+  copyBtn.textContent = "📋 复制";
   copyBtn.addEventListener("click", () => {
     if (selectedIndex == null) return alert("请先选择要复制的关卡");
     const sourceLevel = window.LEVELS[selectedIndex];
@@ -4439,16 +4439,17 @@ function openLevelEditor() {
     renderLevelMenu();
   });
 
-  // Sort controls
+  // Sort controls - 合并为一个按钮组
   const sortControls = document.createElement("div");
   sortControls.style.display = "flex";
-  sortControls.style.gap = "4px";
-  sortControls.style.marginTop = "4px";
+  sortControls.style.gap = "0.5rem";
+  sortControls.style.marginTop = "0.5rem";
 
   const moveUpBtn = document.createElement("button");
-  moveUpBtn.className = "editor-button";
-  moveUpBtn.textContent = "↑ 上移";
+  moveUpBtn.className = "editor-button secondary";
+  moveUpBtn.textContent = "↑";
   moveUpBtn.style.flex = "1";
+  moveUpBtn.title = "上移";
   moveUpBtn.addEventListener("click", () => {
     if (selectedIndex == null || selectedIndex === 0) return;
     const temp = window.LEVELS[selectedIndex];
@@ -4460,9 +4461,10 @@ function openLevelEditor() {
   });
 
   const moveDownBtn = document.createElement("button");
-  moveDownBtn.className = "editor-button";
-  moveDownBtn.textContent = "↓ 下移";
+  moveDownBtn.className = "editor-button secondary";
+  moveDownBtn.textContent = "↓";
   moveDownBtn.style.flex = "1";
+  moveDownBtn.title = "下移";
   moveDownBtn.addEventListener("click", () => {
     if (selectedIndex == null || selectedIndex >= window.LEVELS.length - 1)
       return;
@@ -4478,8 +4480,8 @@ function openLevelEditor() {
   sortControls.appendChild(moveDownBtn);
 
   const deleteBtn = document.createElement("button");
-  deleteBtn.className = "editor-button";
-  deleteBtn.textContent = "删除所选关卡";
+  deleteBtn.className = "editor-button danger";
+  deleteBtn.textContent = "删除";
   deleteBtn.addEventListener("click", () => {
     if (selectedIndex == null) return alert("请先选择要删除的关卡");
     if (!confirm("确认删除当前选中的关卡？此操作无法撤销（仅修改内存）"))
@@ -4496,19 +4498,18 @@ function openLevelEditor() {
   let selectedIndices = new Set();
 
   const batchControls = document.createElement("div");
-  batchControls.style.display = "flex";
-  batchControls.style.flexDirection = "column";
-  batchControls.style.gap = "4px";
-  batchControls.style.marginTop = "8px";
-  batchControls.style.padding = "8px";
-  batchControls.style.backgroundColor = "#111";
-  batchControls.style.borderRadius = "4px";
-  batchControls.style.border = "1px solid #333";
   batchControls.style.display = "none"; // Hidden by default
+  batchControls.style.flexDirection = "column";
+  batchControls.style.gap = "0.5rem";
+  batchControls.style.marginTop = "0.75rem";
+  batchControls.style.padding = "0.75rem";
+  batchControls.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
+  batchControls.style.borderRadius = "8px";
+  batchControls.style.border = "1px solid rgba(255, 255, 255, 0.1)";
 
   const batchSelectAllBtn = document.createElement("button");
-  batchSelectAllBtn.textContent = "全选";
-  batchSelectAllBtn.className = "editor-button";
+  batchSelectAllBtn.textContent = "☑️ 全选";
+  batchSelectAllBtn.className = "editor-button secondary";
   batchSelectAllBtn.addEventListener("click", () => {
     if (selectedIndices.size === window.LEVELS.length) {
       selectedIndices.clear();
@@ -4520,8 +4521,8 @@ function openLevelEditor() {
   });
 
   const batchUnlockBtn = document.createElement("button");
-  batchUnlockBtn.textContent = "批量解锁";
-  batchUnlockBtn.className = "editor-button";
+  batchUnlockBtn.textContent = "🔓 批量解锁";
+  batchUnlockBtn.className = "editor-button primary";
   batchUnlockBtn.disabled = true;
   batchUnlockBtn.addEventListener("click", () => {
     if (selectedIndices.size === 0) return;
@@ -4536,8 +4537,8 @@ function openLevelEditor() {
   });
 
   const batchLockBtn = document.createElement("button");
-  batchLockBtn.textContent = "批量锁定";
-  batchLockBtn.className = "editor-button";
+  batchLockBtn.textContent = "🔒 批量锁定";
+  batchLockBtn.className = "editor-button secondary";
   batchLockBtn.disabled = true;
   batchLockBtn.addEventListener("click", () => {
     if (selectedIndices.size === 0) return;
@@ -4552,9 +4553,8 @@ function openLevelEditor() {
   });
 
   const batchDeleteBtn = document.createElement("button");
-  batchDeleteBtn.textContent = "批量删除";
-  batchDeleteBtn.className = "editor-button";
-  batchDeleteBtn.style.backgroundColor = "#a22";
+  batchDeleteBtn.textContent = "🗑️ 批量删除";
+  batchDeleteBtn.className = "editor-button danger";
   batchDeleteBtn.disabled = true;
   batchDeleteBtn.addEventListener("click", () => {
     if (selectedIndices.size === 0) return;
@@ -4593,13 +4593,22 @@ function openLevelEditor() {
       count === window.LEVELS.length ? "取消全选" : "全选";
   }
 
+  // 重新组织左侧布局，更美观
   left.appendChild(title);
   left.appendChild(list);
+
+  // 主要操作按钮组
+  const mainActions = document.createElement("div");
+  mainActions.style.display = "flex";
+  mainActions.style.flexDirection = "column";
+  mainActions.style.gap = "0.5rem";
+  mainActions.appendChild(addBtn);
+  mainActions.appendChild(copyBtn);
+  mainActions.appendChild(sortControls);
+  mainActions.appendChild(deleteBtn);
+
+  left.appendChild(mainActions);
   left.appendChild(batchControls);
-  left.appendChild(addBtn);
-  left.appendChild(copyBtn);
-  left.appendChild(sortControls);
-  left.appendChild(deleteBtn);
 
   // Right: form
   const right = document.createElement("div");
@@ -4692,7 +4701,6 @@ function openLevelEditor() {
   // 清除缩略图按钮（仅修改内存预览，不写磁盘）
   const clearThumbBtn = document.createElement("button");
   clearThumbBtn.type = "button";
-  clearThumbBtn.textContent = "清除缩略图";
   clearThumbBtn.addEventListener("click", () => {
     thumbPreview.src = "";
     currentDraft.thumbnail = "";
@@ -4831,8 +4839,11 @@ function openLevelEditor() {
       });
 
       const removeT = document.createElement("button");
-      removeT.className = "editor-button";
-      removeT.textContent = "删除目标";
+      removeT.className = "editor-button danger";
+      removeT.textContent = "✕";
+      removeT.title = "删除目标";
+      removeT.style.padding = "0.5rem";
+      removeT.style.minWidth = "2.5rem";
       removeT.addEventListener("click", () => {
         arr.splice(idx, 1);
         renderTargetsEditor(arr);
@@ -4867,8 +4878,8 @@ function openLevelEditor() {
   }
 
   const addTargetBtn = document.createElement("button");
-  addTargetBtn.className = "editor-button";
-  addTargetBtn.textContent = "添加目标";
+  addTargetBtn.className = "editor-button primary";
+  addTargetBtn.textContent = "➕ 添加目标";
   addTargetBtn.type = "button";
   addTargetBtn.addEventListener("click", () => {
     currentDraft.targets = currentDraft.targets || [];
@@ -4881,8 +4892,8 @@ function openLevelEditor() {
   actions.className = "editor-actions";
 
   const applyBtn = document.createElement("button");
-  applyBtn.className = "editor-button";
-  applyBtn.textContent = "保存到内存";
+  applyBtn.className = "editor-button primary";
+  applyBtn.textContent = "💾 保存";
   applyBtn.type = "button";
   applyBtn.addEventListener("click", () => {
     // validation & write back
@@ -5002,9 +5013,16 @@ function openLevelEditor() {
     );
   });
 
+  // 合并导入/导出按钮
+  const importExportGroup = document.createElement("div");
+  importExportGroup.style.display = "flex";
+  importExportGroup.style.gap = "0.5rem";
+  importExportGroup.style.flexWrap = "wrap";
+
   const exportBtn = document.createElement("button");
-  exportBtn.textContent = "Export JSON";
+  exportBtn.textContent = "📤 导出";
   exportBtn.type = "button";
+  exportBtn.className = "editor-button secondary";
   exportBtn.addEventListener("click", () => {
     const data = JSON.stringify(window.LEVELS, null, 2);
     const blob = new Blob([data], { type: "application/json;charset=utf-8" });
@@ -5018,12 +5036,16 @@ function openLevelEditor() {
     URL.revokeObjectURL(url);
   });
 
-  // Upload to server button
+  // 合并上传/配置API按钮
+  const uploadApiGroup = document.createElement("div");
+  uploadApiGroup.style.display = "flex";
+  uploadApiGroup.style.gap = "0.5rem";
+  uploadApiGroup.style.flexWrap = "wrap";
+
   const uploadBtn = document.createElement("button");
-  uploadBtn.textContent = "上传到服务器";
+  uploadBtn.textContent = "☁️ 上传";
   uploadBtn.type = "button";
-  uploadBtn.className = "editor-button";
-  uploadBtn.style.backgroundColor = "#2a5";
+  uploadBtn.className = "editor-button primary";
   uploadBtn.disabled = false;
 
   // API endpoint configuration (用户可以在设置中配置)
@@ -5072,12 +5094,10 @@ function openLevelEditor() {
     }
   });
 
-  // API endpoint configuration button
   const configApiBtn = document.createElement("button");
-  configApiBtn.textContent = "配置 API";
+  configApiBtn.textContent = "⚙️ 配置";
   configApiBtn.type = "button";
-  configApiBtn.className = "editor-button";
-  configApiBtn.style.fontSize = "11px";
+  configApiBtn.className = "editor-button secondary";
   configApiBtn.addEventListener("click", () => {
     const current = API_ENDPOINT || "未设置";
     const newEndpoint = prompt(
@@ -5197,10 +5217,9 @@ function openLevelEditor() {
   });
 
   const previewBtn = document.createElement("button");
-  previewBtn.textContent = "预览关卡";
+  previewBtn.textContent = "👁️ 预览";
   previewBtn.type = "button";
-  previewBtn.className = "editor-button";
-  previewBtn.style.backgroundColor = "#2a5";
+  previewBtn.className = "editor-button primary";
   previewBtn.addEventListener("click", () => {
     if (selectedIndex == null) return alert("请先选择一个关卡");
 
@@ -5293,9 +5312,8 @@ function openLevelEditor() {
   });
 
   const closeBtn = document.createElement("button");
-  closeBtn.textContent = "关闭 (ESC)";
   closeBtn.type = "button";
-  closeBtn.className = "editor-button";
+  closeBtn.title = "关闭 (ESC)";
   closeBtn.addEventListener("click", () => {
     overlay.style.transition = "opacity 0.3s ease-out";
     overlay.style.opacity = "0";
@@ -5319,11 +5337,11 @@ function openLevelEditor() {
     }
   });
 
-  // Import button wrapper for better UX
+  // Import button wrapper
   const importLabel = document.createElement("label");
-  importLabel.className = "editor-button";
+  importLabel.className = "editor-button secondary";
   importLabel.style.cursor = "pointer";
-  importLabel.textContent = "导入 JSON";
+  importLabel.textContent = "📥 导入";
   importLabel.appendChild(importInput);
   importInput.style.display = "none";
 
@@ -5332,29 +5350,45 @@ function openLevelEditor() {
   historyControls.style.gap = "4px";
   historyControls.style.marginBottom = "8px";
 
-  // Undo/Redo buttons (must be defined before appending to historyControls)
+  // Undo/Redo buttons - 简化文本
   const undoBtn = document.createElement("button");
-  undoBtn.textContent = "撤销 (Ctrl+Z)";
-  undoBtn.className = "editor-button";
+  undoBtn.textContent = "↶ 撤销";
+  undoBtn.className = "editor-button secondary";
   undoBtn.type = "button";
   undoBtn.disabled = true;
+  undoBtn.title = "撤销 (Ctrl+Z)";
 
   const redoBtn = document.createElement("button");
-  redoBtn.textContent = "重做 (Ctrl+Y)";
-  redoBtn.className = "editor-button";
+  redoBtn.textContent = "↷ 重做";
+  redoBtn.className = "editor-button secondary";
   redoBtn.type = "button";
   redoBtn.disabled = true;
+  redoBtn.title = "重做 (Ctrl+Y)";
 
   historyControls.appendChild(undoBtn);
   historyControls.appendChild(redoBtn);
 
+  // 组织按钮组
+  uploadApiGroup.appendChild(uploadBtn);
+  uploadApiGroup.appendChild(configApiBtn);
+
+  importExportGroup.appendChild(exportBtn);
+  importExportGroup.appendChild(importLabel);
+
+  // 清除缩略图按钮简化
+  clearThumbBtn.textContent = "🗑️ 清除";
+  clearThumbBtn.className = "editor-button secondary";
+
+  // 关闭按钮
+  closeBtn.textContent = "✕ 关闭";
+  closeBtn.className = "editor-button secondary";
+
+  // 按逻辑分组添加按钮
   actions.appendChild(historyControls);
   actions.appendChild(applyBtn);
   actions.appendChild(previewBtn);
-  actions.appendChild(exportBtn);
-  actions.appendChild(uploadBtn);
-  actions.appendChild(configApiBtn);
-  actions.appendChild(importLabel);
+  actions.appendChild(importExportGroup);
+  actions.appendChild(uploadApiGroup);
   actions.appendChild(clearThumbBtn);
   actions.appendChild(closeBtn);
 

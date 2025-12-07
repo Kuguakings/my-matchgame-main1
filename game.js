@@ -28,16 +28,22 @@ let levelTargets = {}; // { color: count }
 // 游戏状态保存相关常量
 const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
 
-// 修改颜色权重配置
-const COLOR_WEIGHTS = {
-  "red": 18,
-  "blue": 18,
-  "green": 18,
-  "purple": 18,
-  "white": 18,
-  "orange": 5,
-  "yellow": 5
+// 默认颜色权重配置（不可变的默认模板）
+const DEFAULT_COLOR_WEIGHTS = {
+  red: 18,
+  blue: 18,
+  green: 18,
+  purple: 18,
+  white: 18,
+  orange: 5,
+  yellow: 5,
 };
+
+// 运行时全局权重（可被设置为默认或用户通过设置更改的值）
+const COLOR_WEIGHTS = Object.assign({}, DEFAULT_COLOR_WEIGHTS);
+
+// 当前激活关卡的权重（若关卡定义了 specialRules.weights，则在该关运行时使用它）
+let activeLevelWeights = null;
 
 const gridContainer = document.getElementById("grid-container");
 const scoreDisplay = document.getElementById("score");
@@ -71,41 +77,75 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     { once: true }
   );
-  
+
   // 在用户离开页面时保存游戏状态
-  window.addEventListener('beforeunload', () => {
+  window.addEventListener("beforeunload", () => {
     // 在用户离开页面时保存游戏状态
     if (level && board) {
       saveGameState();
     }
   });
-  
+
   // 添加权重滑块事件监听器
-  const weightSliders = document.querySelectorAll('.weight-slider input[type="range"]');
-  weightSliders.forEach(slider => {
+  const weightSliders = document.querySelectorAll(
+    '.weight-slider input[type="range"]'
+  );
+  weightSliders.forEach((slider) => {
     // 初始化显示值
     const color = slider.dataset.color;
     const span = document.getElementById(`${color}-weight`);
     if (span) {
       span.textContent = slider.value;
     }
-    
+
     // 添加事件监听器
-    slider.addEventListener('input', function() {
+    slider.addEventListener("input", function () {
       const color = this.dataset.color;
       const weight = parseInt(this.value);
-      
+
       // 更新显示值
       const span = document.getElementById(`${color}-weight`);
       if (span) {
         span.textContent = weight;
       }
-      
+
       // 更新权重配置
       COLOR_WEIGHTS[color] = weight;
     });
   });
-  
+
+  // Helper: 将传入的 weights 对象应用到页面滑块（但不持久化到关卡），用于在编辑器中显示某一关的权重
+  function setWeightSlidersFromObject(weightsObj) {
+    const sliders = document.querySelectorAll(
+      '.weight-slider input[type="range"]'
+    );
+    sliders.forEach((s) => {
+      const c = s.dataset.color;
+      const val =
+        weightsObj &&
+        typeof weightsObj === "object" &&
+        weightsObj[c] !== undefined
+          ? Number(weightsObj[c])
+          : COLOR_WEIGHTS[c];
+      s.value = val;
+      const span = document.getElementById(`${c}-weight`);
+      if (span) span.textContent = val;
+    });
+  }
+
+  // Helper: 从页面滑块读取当前值（用于保存到关卡的 specialRules.weights）
+  function getCurrentSlidersWeights() {
+    const out = {};
+    const sliders = document.querySelectorAll(
+      '.weight-slider input[type="range"]'
+    );
+    sliders.forEach((s) => {
+      const c = s.dataset.color;
+      out[c] = Number(s.value);
+    });
+    return out;
+  }
+
   // Load user settings and levels BEFORE starting the first level.
   try {
     loadSettings();
@@ -134,12 +174,18 @@ document.addEventListener("DOMContentLoaded", () => {
   - 返回值为 COLORS 数组内的一项。
 */
 function getWeightedRandomColor() {
-  const totalWeight = Object.values(COLOR_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
+  const weightsSource =
+    activeLevelWeights && typeof activeLevelWeights === "object"
+      ? activeLevelWeights
+      : COLOR_WEIGHTS;
+
+  const entries = Object.entries(weightsSource);
+  const totalWeight = entries.reduce((sum, [, w]) => sum + Number(w || 0), 0);
   let r = Math.random() * totalWeight;
-  
-  for (const [color, weight] of Object.entries(COLOR_WEIGHTS)) {
-    if (r < weight) return color;
-    r -= weight;
+
+  for (const [color, weight] of entries) {
+    if (r < Number(weight || 0)) return color;
+    r -= Number(weight || 0);
   }
   return COLORS[0];
 }
@@ -446,9 +492,12 @@ function createBoard(initialLayout = null) {
   - 返回值为 COLORS 数组内的一项。
 */
 function getWeightedRandomColor() {
-  const totalWeight = Object.values(COLOR_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
+  const totalWeight = Object.values(COLOR_WEIGHTS).reduce(
+    (sum, weight) => sum + weight,
+    0
+  );
   let r = Math.random() * totalWeight;
-  
+
   for (const [color, weight] of Object.entries(COLOR_WEIGHTS)) {
     if (r < weight) return color;
     r -= weight;
@@ -1986,7 +2035,7 @@ async function handlePurpleMatch3(r, c, matchGroupTiles) {
     cell.style.transform = "scale(1)";
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
-  
+
   return true;
 }
 
@@ -2203,14 +2252,14 @@ async function handleWhiteMatch4(removalSet) {
 function getConnectedFrozenTiles(r, c, connectedSet) {
   // 边界检查和安全检查
   if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
-  
+
   const key = `${r},${c}`;
   if (connectedSet.has(key)) return;
-  
+
   const tile = board[r][c];
   // 确保方块存在且是冰冻状态
   if (!tile || tile.state !== "frozen") return;
-  
+
   connectedSet.add(key);
 
   const neighbors = [
@@ -2243,7 +2292,7 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
   if (!baseRemovalSet || baseRemovalSet.size === 0) {
     return [];
   }
-  
+
   // wave0 = 当前要消除的所有块（已在 finalRemovalSet 中）
   const waves = [];
   const allRemoved = new Set(baseRemovalSet);
@@ -2263,16 +2312,16 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
   // 添加最大迭代次数防止无限循环
   let iterations = 0;
   const maxIterations = 100;
-  
+
   while (iterations < maxIterations) {
     iterations++;
     const nextWaveSet = new Set();
-    
+
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
         const key = `${r},${c}`;
         if (allRemoved.has(key)) continue;
-        
+
         const tile = board[r][c];
         // 确保方块存在且是冰冻状态
         if (!tile || tile.state !== "frozen") continue;
@@ -2283,7 +2332,7 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
           `${r},${c - 1}`,
           `${r},${c + 1}`,
         ];
-        
+
         for (const n of neighbors) {
           // 检查邻居是否在前一波中
           if (prevWave.has(n)) {
@@ -2296,7 +2345,7 @@ function buildFrozenRemovalWaves(baseRemovalSet) {
 
     // 如果没有更多的波次，结束循环
     if (nextWaveSet.size === 0) break;
-    
+
     // 添加到已移除集合和波次列表
     nextWaveSet.forEach((k) => allRemoved.add(k));
     waves.push(setToList(nextWaveSet));
@@ -2318,11 +2367,13 @@ async function handleFrozenShatter(r, c) {
       if (i >= 0 && i < GRID_SIZE && j >= 0 && j < GRID_SIZE && board[i][j]) {
         // 添加额外的安全检查，确保方块存在且有效
         const tile = board[i][j];
-        if (tile && 
-            tile.color === "white" &&
-            tile.state !== "frozen" &&
-            tile.type !== "gold" &&
-            tile.type !== "fusion-core") {
+        if (
+          tile &&
+          tile.color === "white" &&
+          tile.state !== "frozen" &&
+          tile.type !== "gold" &&
+          tile.type !== "fusion-core"
+        ) {
           applyFreeze(tile);
         }
       }
@@ -2377,7 +2428,7 @@ async function handleOrangeMatch3(r, c) {
 
   renderBoard();
   await new Promise((resolve) => setTimeout(resolve, 300));
-  
+
   return true;
 }
 
@@ -3266,18 +3317,18 @@ async function loadLevels() {
   try {
     // 添加时间戳以避免缓存
     const urlWithTimestamp = `${LEVELS_URL}?t=${Date.now()}`;
-    const resp = await fetch(urlWithTimestamp, { 
-      method: 'GET',
+    const resp = await fetch(urlWithTimestamp, {
+      method: "GET",
       headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     });
-    
+
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     const result = await resp.json();
-    
+
     // 检查响应格式
     if (result.success && Array.isArray(result.levels)) {
       window.LEVELS = result.levels;
@@ -3287,13 +3338,10 @@ async function loadLevels() {
     } else {
       throw new Error("API 返回格式错误");
     }
-    
+
     console.log("关卡加载成功，关卡数量：", window.LEVELS.length);
   } catch (err) {
-    console.warn(
-      "无法通过 API 加载关卡，使用内置回退关卡。错误：",
-      err
-    );
+    console.warn("无法通过 API 加载关卡，使用内置回退关卡。错误：", err);
     window.LEVELS = _embeddedFallbackLevels.slice();
   }
 
@@ -3356,16 +3404,16 @@ function saveGameState() {
   try {
     // 只有在游戏进行中才保存状态
     if (!level || !board) return;
-    
+
     const gameState = {
       level: level,
       score: score,
       board: board,
       levelTargets: levelTargets,
       targetScore: targetScore,
-      savedAt: Date.now()
+      savedAt: Date.now(),
     };
-    
+
     const key = LEVEL_STATE_KEY_PREFIX + level;
     localStorage.setItem(key, JSON.stringify(gameState));
     console.log(`游戏状态已保存: 关卡 ${level}`);
@@ -3383,9 +3431,9 @@ function loadGameState(levelId) {
     const key = LEVEL_STATE_KEY_PREFIX + levelId;
     const savedState = localStorage.getItem(key);
     if (!savedState) return null;
-    
+
     const state = JSON.parse(savedState);
-    
+
     // 检查状态是否有效（例如不超过一天）
     const oneDay = 24 * 60 * 60 * 1000;
     if (Date.now() - state.savedAt > oneDay) {
@@ -3393,7 +3441,7 @@ function loadGameState(levelId) {
       clearGameState(levelId);
       return null;
     }
-    
+
     return state;
   } catch (err) {
     console.warn("加载游戏状态失败：", err);
@@ -3424,19 +3472,48 @@ function restoreGameState(state) {
   level = state.level;
   score = state.score;
   board = state.board;
-  levelTargets = state.levelTargets;
+  // 防御性恢复：确保 levelTargets 为对象，避免因 null/非对象导致 UI 抛错（Edge 某些存档可能缺失）
+  levelTargets =
+    state.levelTargets && typeof state.levelTargets === "object"
+      ? state.levelTargets
+      : {};
   targetScore = state.targetScore;
-  
+
   // 更新UI
   if (levelDisplay) levelDisplay.textContent = level;
   if (scoreDisplay) scoreDisplay.textContent = `${score} / ${targetScore}`;
-  
+
   // 更新目标面板
-  updateTargetUI();
-  
+  try {
+    updateTargetUI();
+  } catch (err) {
+    console.warn("updateTargetUI failed during restore:", err);
+  }
+
   // 渲染棋盘
-  renderBoard();
-  
+  try {
+    // 验证 board 结构，若不合法则回退为随机生成棋盘，避免因破损数据造成渲染异常（Edge 某些 localStorage 存档可能被截断）
+    let ok = Array.isArray(board) && board.length === GRID_SIZE;
+    if (ok) {
+      for (let r = 0; r < GRID_SIZE; r++) {
+        if (!Array.isArray(board[r]) || board[r].length !== GRID_SIZE) {
+          ok = false;
+          break;
+        }
+      }
+    }
+    if (!ok) {
+      console.warn("存档的 board 数据不完整或不合法，已回退为随机生成的棋盘");
+      createBoard();
+    }
+    renderBoard();
+  } catch (err) {
+    console.error("renderBoard failed during restore:", err);
+    // 兜底：创建新关卡初始化以避免黑屏
+    createBoard();
+    renderBoard();
+  }
+
   console.log(`游戏状态已恢复: 关卡 ${level}`);
 }
 
@@ -3486,7 +3563,9 @@ function startLevel(id) {
   const savedState = loadGameState(want);
   if (savedState) {
     // 询问用户是否继续游戏
-    const shouldContinue = confirm(`检测到关卡 ${want} 的未完成游戏进度，是否继续？`);
+    const shouldContinue = confirm(
+      `检测到关卡 ${want} 的未完成游戏进度，是否继续？`
+    );
     if (shouldContinue) {
       // 恢复游戏状态
       restoreGameState(savedState);
@@ -3570,6 +3649,22 @@ function startLevel(id) {
   }
 
   // render UI and board
+  // If this level defines custom weights, activate them for this runtime level
+  try {
+    if (
+      lvlDef &&
+      lvlDef.specialRules &&
+      typeof lvlDef.specialRules === "object" &&
+      lvlDef.specialRules.weights
+    ) {
+      activeLevelWeights = lvlDef.specialRules.weights;
+    } else {
+      activeLevelWeights = null;
+    }
+  } catch (err) {
+    console.warn("设置激活关卡权重失败：", err);
+    activeLevelWeights = null;
+  }
   updateTargetUI();
   createBoard(lvlDef?.initialBoard);
   renderBoard();
@@ -3755,6 +3850,8 @@ function showMenu() {
   overlay.classList.remove("hidden");
   overlay.setAttribute("aria-hidden", "false");
   if (panel) panel.classList.remove("hidden");
+  // Leave per-level active weights when entering menu: use global defaults in menu context
+  activeLevelWeights = null;
   renderLevelMenu();
 }
 
@@ -4344,6 +4441,15 @@ function openLevelEditor() {
     lvl.thumbnail = currentDraft.thumbnail || lvl.thumbnail || "";
     lvl.targets = newTargets;
     lvl.specialRules = specialRules;
+    // 将当前页面滑块的权重保存到关卡的 specialRules.weights 以便该关可以拥有独立权重设置
+    try {
+      const weights = getCurrentSlidersWeights();
+      if (!lvl.specialRules || typeof lvl.specialRules !== "object")
+        lvl.specialRules = {};
+      lvl.specialRules.weights = weights;
+    } catch (err) {
+      console.warn("保存关卡权重时出错：", err);
+    }
 
     // Save initial board layout
     const initialBoard = [];
@@ -4654,10 +4760,29 @@ function openLevelEditor() {
 
     // Small delay to ensure editor is closed
     setTimeout(() => {
+      try {
+        if (
+          tempLevel.specialRules &&
+          typeof tempLevel.specialRules === "object" &&
+          tempLevel.specialRules.weights
+        ) {
+          // Update sliders for visibility but do NOT mutate global defaults
+          setWeightSlidersFromObject(tempLevel.specialRules.weights);
+          // Activate for preview runtime
+          activeLevelWeights = tempLevel.specialRules.weights;
+        } else {
+          activeLevelWeights = null;
+        }
+      } catch (err) {
+        console.warn("预览前设置权重失败：", err);
+        activeLevelWeights = null;
+      }
       startLevel(previewId);
       // Restore original levels after a moment (in case user wants to continue editing)
       setTimeout(() => {
         window.LEVELS = originalLevels;
+        // Clear active weights so global defaults apply again
+        activeLevelWeights = null;
         renderLevelMenu();
       }, 100);
     }, 100);
@@ -5120,6 +5245,22 @@ function openLevelEditor() {
       }
     } else {
       specialRulesInput.value = "";
+    }
+
+    // 如果该关有 weights 定义，则将滑块设置为该权重（便于编辑本关的权重）
+    try {
+      const weightsObj =
+        lvl.specialRules && typeof lvl.specialRules === "object"
+          ? lvl.specialRules.weights
+          : null;
+      if (weightsObj) {
+        setWeightSlidersFromObject(weightsObj);
+      } else {
+        // 若该关无自定义权重，则确保滑块显示当前全局权重
+        setWeightSlidersFromObject(null);
+      }
+    } catch (err) {
+      console.warn("设置权重滑块时出错：", err);
     }
 
     // Load initial board layout

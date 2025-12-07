@@ -26,9 +26,14 @@ let nextTileId = 0; // Unique ID for animations
 // Level 3+: Scale up
 let levelTargets = {}; // { color: count }
 
-// 游戏状态保存相关常量（已移至 modules/game-state.js，这里保留以保持兼容性）
-// 如果模块已加载，使用模块中的常量
-const LEVEL_STATE_KEY_PREFIX = window.GameStateManager?.LEVEL_STATE_KEY_PREFIX || "mymatch_level_state_v1_";
+// 游戏状态保存相关常量（已移至 modules/game-state.js）
+// 使用模块中的常量，如果模块未加载则使用默认值
+const LEVEL_STATE_KEY_PREFIX = (() => {
+  if (window.GameStateManager && window.GameStateManager.LEVEL_STATE_KEY_PREFIX) {
+    return window.GameStateManager.LEVEL_STATE_KEY_PREFIX;
+  }
+  return "mymatch_level_state_v1_";
+})();
 
 // 默认颜色权重配置（用于没有设置权重的关卡）
 // 红、白、蓝、紫、绿各占16%（共80%）
@@ -3683,6 +3688,9 @@ async function loadLevels() {
 
       console.log("关卡加载成功，关卡数量：", window.LEVELS.length);
       
+      // 在加载关卡后应用本地进度覆盖（若有）
+      loadProgress();
+      
       // 触发事件
       document.dispatchEvent(
         new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
@@ -3700,6 +3708,9 @@ async function loadLevels() {
         stars: [3000, 6000, 10000],
         description: "内置回退：第1关",
       }];
+      
+      // 在加载关卡后应用本地进度覆盖（若有）
+      loadProgress();
       
       document.dispatchEvent(
         new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })

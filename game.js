@@ -57,7 +57,14 @@ vfxContainer.classList.add("vfx-container");
 // 注意：不要在文件顶部立刻 append，这会造成节点在后续被移动或重复
 // 初始 append 在 DOMContentLoaded 回调中执行： gridContainer.appendChild(vfxContainer);
 
+// 加载状态管理
+let loadingProgress = 0;
+let isLoadingComplete = false;
+
 document.addEventListener("DOMContentLoaded", () => {
+  // 初始化加载屏幕
+  initLoadingScreen();
+
   // 确保 gridContainer 存在
   if (!gridContainer) {
     console.error("gridContainer not found in DOMContentLoaded!");
@@ -3801,8 +3808,10 @@ function initGame() {
     console.warn("renderLevelMenu failed during init", e);
   }
 
-  // Show level selection menu instead of starting a level directly
-  showMenu();
+  // 初始化主菜单按钮事件（延迟执行确保DOM已创建）
+  setTimeout(() => {
+    initMainMenuButtons();
+  }, 100);
 }
 
 // levels 加载已在顶部 DOMContentLoaded 回调中处理（避免重复调用）
@@ -3950,7 +3959,14 @@ function renderLevelMenu() {
 
     if (l.unlocked) {
       card.addEventListener("click", () => {
-        hideMenu();
+        hideLevelSelection();
+        hideMainMenu();
+        // 显示游戏容器
+        const gameContainer = document.getElementById("game-container");
+        if (gameContainer) {
+          gameContainer.classList.remove("hidden");
+          gameContainer.style.display = "flex";
+        }
         setTimeout(() => startLevel(l.id), 80);
       });
     }
@@ -3960,17 +3976,8 @@ function renderLevelMenu() {
 }
 
 function showMenu() {
-  const overlay = document.getElementById("menu-overlay");
-  const panel = document.getElementById("level-panel");
-  if (!overlay) {
-    console.warn("showMenu: menu-overlay not found");
-    return;
-  }
-  overlay.classList.remove("hidden");
-  overlay.setAttribute("aria-hidden", "false");
-  overlay.style.display = "flex"; // 确保显示
-  if (panel) panel.classList.remove("hidden");
-  renderLevelMenu();
+  // 兼容旧代码，直接调用showLevelSelection
+  showLevelSelection();
 }
 
 /* =====================

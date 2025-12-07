@@ -10,7 +10,31 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="game-container">
+    <!-- 加载屏幕 -->
+    <div id="loading-screen">
+      <h1 id="loading-title">元素消消乐</h1>
+      <div id="loading-progress-container">
+        <div id="loading-progress-bar"></div>
+        <div id="loading-progress-text">0%</div>
+      </div>
+      <button id="start-game-btn" class="hidden">开始游戏</button>
+    </div>
+
+    <!-- 主菜单 -->
+    <div id="main-menu-screen" class="hidden">
+      <div id="main-menu-content">
+        <h1 id="main-menu-title">元素消消乐</h1>
+        <div id="main-menu-buttons">
+          <button id="btn-select-level" class="main-menu-btn">选择关卡</button>
+          <button id="btn-settings" class="main-menu-btn">设置</button>
+          <button id="btn-quit-game" class="main-menu-btn">退出游戏</button>
+        </div>
+        <!-- 关卡编辑器按钮（右上角） -->
+        <button id="btn-level-editor-main" class="level-editor-btn">关卡编辑器</button>
+      </div>
+    </div>
+
+    <div id="game-container" class="hidden">
       <div id="ui-header">
         <div id="ui-top-row">
           <div id="level-info">关卡: <span id="level">1</span></div>

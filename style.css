@@ -22,6 +22,315 @@ body {
   align-items: center;
   min-height: 100vh;
   overflow: hidden;
+  position: relative;
+}
+
+/* 加载屏幕 */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  z-index: 10000;
+  transition: opacity 0.5s ease-out;
+}
+
+#loading-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#loading-title {
+  font-size: clamp(2rem, 8vw, 4rem);
+  font-weight: bold;
+  margin-bottom: 3rem;
+  background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #f9ca24);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 3s ease infinite;
+  text-align: center;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+#loading-progress-container {
+  width: min(80%, 400px);
+  margin-bottom: 2rem;
+}
+
+#loading-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+#loading-progress-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--progress-width, 0%);
+  background: linear-gradient(90deg, #4ecdc4, #45b7d1);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  animation: progressGlow 1.5s ease infinite;
+}
+
+@keyframes progressGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4ecdc4, #45b7d1);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+  box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+
+#loading-progress-text {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-size: 1.2rem;
+  color: #4ecdc4;
+}
+
+#start-game-btn {
+  padding: 1rem 3rem;
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  font-weight: bold;
+}
+
+#start-game-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+#start-game-btn:active {
+  transform: translateY(0);
+}
+
+/* 主菜单屏幕 */
+#main-menu-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  z-index: 9999;
+  transition: opacity 0.5s ease-out;
+}
+
+#main-menu-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#main-menu-content {
+  width: min(90%, 500px);
+  text-align: center;
+  position: relative;
+}
+
+#main-menu-title {
+  font-size: clamp(2rem, 8vw, 4rem);
+  font-weight: bold;
+  margin-bottom: 3rem;
+  background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #f9ca24);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 3s ease infinite;
+}
+
+#main-menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.main-menu-btn {
+  width: min(80%, 300px);
+  padding: 1.2rem 2rem;
+  font-size: clamp(1rem, 4vw, 1.5rem);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  font-weight: bold;
+}
+
+.main-menu-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.main-menu-btn:active {
+  transform: translateY(-1px);
+}
+
+/* 关卡编辑器按钮（右上角） */
+.level-editor-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.6rem 1.2rem;
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.level-editor-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+
+/* 关卡选择菜单 */
+#level-selection-menu {
+  width: min(95%, 1000px);
+  max-height: 90vh;
+  background: linear-gradient(180deg, #111, #0d0d0d);
+  color: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  overflow-y: auto;
+}
+
+#level-selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+#level-selection-header h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+.back-btn {
+  padding: 0.5rem 1rem;
+  background: #222;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+.back-btn:hover {
+  background: #333;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 设置菜单 */
+#settings-menu {
+  width: min(90%, 600px);
+  max-height: 90vh;
+  background: linear-gradient(180deg, #111, #0d0d0d);
+  color: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  overflow-y: auto;
+}
+
+#settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+#settings-header h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+#settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .level-editor-btn {
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  #main-menu-buttons {
+    gap: 1rem;
+  }
+  
+  .main-menu-btn {
+    width: 90%;
+    padding: 1rem 1.5rem;
+  }
 }
 
 #game-container {
@@ -388,18 +697,15 @@ body {
   background: rgba(0, 0, 0, 0.6);
   z-index: 3000;
 }
-#main-menu {
-  width: min(920px, 90%);
-  background: linear-gradient(180deg, #111, #0d0d0d);
-  color: #fff;
-  border-radius: 12px;
-  padding: 18px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
-}
-#main-menu h2 {
-  margin: 0 0 12px 0;
-  font-size: 4vmin;
-  text-align: center;
+
+#settings-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 3000;
 }
 #menu-buttons {
   display: flex;

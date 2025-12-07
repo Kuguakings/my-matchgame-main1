@@ -440,6 +440,110 @@ body {
   padding: var(--grid-gap);
   border-radius: 1vmin;
   position: relative; /* For VFX container */
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.5s ease, background 0.5s ease, box-shadow 0.5s ease;
+}
+
+/* 关卡主题样式 */
+#grid-container.theme-plain {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+#grid-container.theme-forest {
+  border-color: rgba(34, 139, 34, 0.6);
+  box-shadow: 0 0 30px rgba(34, 139, 34, 0.4), inset 0 0 20px rgba(34, 139, 34, 0.1);
+  background: linear-gradient(135deg, rgba(0, 50, 0, 0.6), rgba(0, 100, 0, 0.4));
+}
+
+#grid-container.theme-cave {
+  border-color: rgba(139, 69, 19, 0.6);
+  box-shadow: 0 0 30px rgba(139, 69, 19, 0.4), inset 0 0 20px rgba(101, 50, 14, 0.2);
+  background: linear-gradient(135deg, rgba(50, 25, 0, 0.6), rgba(80, 40, 0, 0.4));
+}
+
+#grid-container.theme-storm {
+  border-color: rgba(70, 130, 180, 0.7);
+  box-shadow: 0 0 40px rgba(70, 130, 180, 0.5), inset 0 0 20px rgba(100, 150, 200, 0.2);
+  background: linear-gradient(135deg, rgba(25, 25, 112, 0.6), rgba(70, 130, 180, 0.4));
+}
+
+#grid-container.theme-lab {
+  border-color: rgba(0, 255, 127, 0.6);
+  box-shadow: 0 0 30px rgba(0, 255, 127, 0.4), inset 0 0 20px rgba(0, 200, 100, 0.2);
+  background: linear-gradient(135deg, rgba(0, 50, 25, 0.6), rgba(0, 150, 75, 0.4));
+}
+
+#grid-container.theme-ice {
+  border-color: rgba(173, 216, 230, 0.7);
+  box-shadow: 0 0 40px rgba(173, 216, 230, 0.5), inset 0 0 20px rgba(200, 230, 255, 0.3);
+  background: linear-gradient(135deg, rgba(70, 130, 180, 0.6), rgba(176, 224, 230, 0.4));
+}
+
+#grid-container.theme-core {
+  border-color: rgba(255, 69, 0, 0.7);
+  box-shadow: 0 0 40px rgba(255, 69, 0, 0.5), inset 0 0 20px rgba(255, 140, 0, 0.3);
+  background: linear-gradient(135deg, rgba(139, 0, 0, 0.6), rgba(255, 69, 0, 0.4));
+}
+
+#grid-container.theme-voltage {
+  border-color: rgba(255, 215, 0, 0.8);
+  box-shadow: 0 0 50px rgba(255, 215, 0, 0.6), inset 0 0 25px rgba(255, 255, 0, 0.3);
+  background: linear-gradient(135deg, rgba(100, 100, 0, 0.6), rgba(255, 215, 0, 0.4));
+  animation: voltage-pulse 2s ease-in-out infinite;
+}
+
+@keyframes voltage-pulse {
+  0%, 100% {
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.6), inset 0 0 25px rgba(255, 255, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 70px rgba(255, 215, 0, 0.8), inset 0 0 35px rgba(255, 255, 0, 0.5);
+  }
+}
+
+#grid-container.theme-mystic {
+  border-color: rgba(138, 43, 226, 0.7);
+  box-shadow: 0 0 40px rgba(138, 43, 226, 0.5), inset 0 0 20px rgba(186, 85, 211, 0.3);
+  background: linear-gradient(135deg, rgba(75, 0, 130, 0.6), rgba(138, 43, 226, 0.4));
+}
+
+#grid-container.theme-ruins {
+  border-color: rgba(160, 82, 45, 0.6);
+  box-shadow: 0 0 30px rgba(160, 82, 45, 0.4), inset 0 0 20px rgba(139, 69, 19, 0.2);
+  background: linear-gradient(135deg, rgba(80, 40, 20, 0.6), rgba(160, 82, 45, 0.4));
+}
+
+#grid-container.theme-reactor {
+  border-color: rgba(0, 255, 255, 0.7);
+  box-shadow: 0 0 40px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(64, 224, 208, 0.3);
+  background: linear-gradient(135deg, rgba(0, 100, 100, 0.6), rgba(0, 255, 255, 0.4));
+  animation: reactor-glow 3s ease-in-out infinite;
+}
+
+@keyframes reactor-glow {
+  0%, 100% {
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(64, 224, 208, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(0, 255, 255, 0.7), inset 0 0 30px rgba(64, 224, 208, 0.5);
+  }
+}
+
+#grid-container.theme-void {
+  border-color: rgba(75, 0, 130, 0.8);
+  box-shadow: 0 0 50px rgba(75, 0, 130, 0.6), inset 0 0 25px rgba(138, 43, 226, 0.3);
+  background: linear-gradient(135deg, rgba(25, 25, 112, 0.7), rgba(75, 0, 130, 0.5));
+  animation: void-shift 4s ease-in-out infinite;
+}
+
+@keyframes void-shift {
+  0%, 100% {
+    box-shadow: 0 0 50px rgba(75, 0, 130, 0.6), inset 0 0 25px rgba(138, 43, 226, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 70px rgba(138, 43, 226, 0.8), inset 0 0 35px rgba(186, 85, 211, 0.5);
+  }
 }
 
 .cell {
@@ -1388,6 +1492,37 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* 编辑器右上角关闭按钮 */
+.editor-close-top {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: rgba(244, 67, 54, 0.8);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
+}
+
+.editor-close-top:hover {
+  background: rgba(244, 67, 54, 1);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.6);
+}
+
+.editor-close-top:active {
+  transform: scale(0.95);
+}
+
 /* 移动端按钮组优化 */
 @media (max-width: 768px) {
   .editor-actions > div {
@@ -1407,6 +1542,14 @@ body {
   
   .targets-row > * {
     width: 100%;
+  }
+  
+  .editor-close-top {
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.2rem;
   }
 }
 

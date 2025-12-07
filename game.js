@@ -1,13 +1,14 @@
 // ==========================================
 // 【版本号管理】版本格式: MM.dd.HH.mm (月.日.小时.分钟)
 // ⚠️ 每次修改代码时，必须更新下方版本号！
-// 当前版本：v12.5.23.00 (2025年12月5日 23:00 修改)
+// 当前版本：v12.5.23.15 (2025年12月5日 23:15 修改)
 // 历史版本：
+//   - v12.5.23.15: 主题系统实现、编辑器优化（2025-12-05 23:15）- 关卡主题应用到界面、编辑器退出按钮、设置优化
 //   - v12.5.23.00: 关卡编辑器全面完善（2025-12-05 23:00）- 添加游戏板布局编辑器、预览功能、撤销/重做、批量操作
 //   - v12.5.22.30: 关卡编辑器完善（2025-12-05 22:30）- 添加 theme/specialRules 编辑、复制、排序、导入验证、UX 优化
 //   - v12.5.22.00: 初版（2025-12-05 22:00）- 特效增强 + 版本号系统添加
 // ==========================================
-const GAME_VERSION = "12.5.23.00";
+const GAME_VERSION = "12.5.23.15";
 
 const GRID_SIZE = 9;
 const COLORS = ["red", "blue", "green", "purple", "white", "orange", "yellow"];
@@ -3950,6 +3951,9 @@ function startLevel(id) {
   // Ensure menu is hidden when starting a level (do this first)
   hideMenu();
 
+  // 应用关卡主题到游戏界面
+  applyLevelTheme(lvlDef?.theme || "plain");
+
   // render UI and board
   updateTargetUI();
   createBoard(lvlDef?.initialBoard);
@@ -3976,6 +3980,56 @@ function startLevel(id) {
       });
     }
   }, 50);
+}
+
+/*
+  applyLevelTheme(theme)
+  - 应用关卡主题到游戏界面（背景和边框）
+*/
+function applyLevelTheme(theme) {
+  const gridContainer = document.getElementById("grid-container");
+  const gameContainer = document.getElementById("game-container");
+
+  if (!gridContainer) return;
+
+  // 移除所有主题类
+  gridContainer.classList.remove(
+    "theme-plain",
+    "theme-forest",
+    "theme-cave",
+    "theme-storm",
+    "theme-lab",
+    "theme-ice",
+    "theme-core",
+    "theme-voltage",
+    "theme-mystic",
+    "theme-ruins",
+    "theme-reactor",
+    "theme-void"
+  );
+
+  // 应用新主题
+  const themeClass = `theme-${theme || "plain"}`;
+  gridContainer.classList.add(themeClass);
+
+  // 也可以应用到游戏容器背景
+  if (gameContainer) {
+    gameContainer.classList.remove(
+      "theme-plain",
+      "theme-forest",
+      "theme-cave",
+      "theme-storm",
+      "theme-lab",
+      "theme-ice",
+      "theme-core",
+      "theme-voltage",
+      "theme-mystic",
+      "theme-ruins",
+      "theme-reactor",
+      "theme-void"
+    );
+    gameContainer.classList.add(themeClass);
+  }
 }
 
 /*
@@ -5727,8 +5781,22 @@ function openLevelEditor() {
   form.appendChild(actions);
   right.appendChild(form);
 
+  // 右上角退出按钮
+  const closeTopBtn = document.createElement("button");
+  closeTopBtn.textContent = "✕";
+  closeTopBtn.className = "editor-close-top";
+  closeTopBtn.title = "关闭编辑器";
+  closeTopBtn.addEventListener("click", () => {
+    overlay.style.transition = "opacity 0.3s ease-out";
+    overlay.style.opacity = "0";
+    setTimeout(() => {
+      overlay.classList.add("hidden");
+    }, 300);
+  });
+
   panel.appendChild(left);
   panel.appendChild(right);
+  panel.appendChild(closeTopBtn); // 添加到panel最后，确保在最上层
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 
@@ -6087,40 +6155,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const panel = document.getElementById("level-panel");
       if (panel) panel.classList.remove("hidden");
       try {
-        // 插入设置行（仅插入一次）
-        if (panel && !document.getElementById("auto-jump-toggle")) {
-          const settingsRow = document.createElement("div");
-          settingsRow.className = "menu-settings";
-          settingsRow.innerHTML = `
-            <label class="settings-item">
-              <input id="auto-jump-toggle" type="checkbox"> 自动跳转下一关（完成关卡后自动进入下一关）
-            </label>
-            <button id="open-level-editor" class="settings-item">关卡编辑器</button>
-            `;
-          panel.insertBefore(settingsRow, panel.firstChild);
-          const cb = document.getElementById("auto-jump-toggle");
-          if (cb) {
-            cb.checked = !!(
-              window.GameSettings && window.GameSettings.autoJumpNext
-            );
-            cb.addEventListener("change", (e) => {
-              window.GameSettings = window.GameSettings || {};
-              window.GameSettings.autoJumpNext = !!e.target.checked;
-              saveSettings();
-            });
-          }
-          // Hook up editor button
-          const editorBtn = document.getElementById("open-level-editor");
-          if (editorBtn) {
-            editorBtn.addEventListener("click", () => {
-              try {
-                openLevelEditor();
-              } catch (e) {
-                console.warn("打开关卡编辑器失败", e);
-              }
-            });
-          }
-        }
+        // 不再在关卡列表中插入设置和编辑器按钮，这些功能已移至设置菜单和关卡列表右上角
       } catch (e) {
         console.warn("插入设置控件失败", e);
       }

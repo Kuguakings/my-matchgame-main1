@@ -128,12 +128,6 @@ document.addEventListener("DOMContentLoaded", () => {
       weightsTotal.style.color = total === 100 ? 'green' : 'red';
     }
   }
-}
-
-        }
-      });
-    });
-  }
   
   // Load user settings and levels BEFORE starting the first level.
   try {
@@ -211,36 +205,10 @@ function updateEditorWeightInputs() {
   }
 }
 
-
-// 添加重置颜色权重到默认值的函数
-function resetColorWeightsToDefault() {
-  const inputs = document.querySelectorAll('.color-weight-input');
-  if (inputs.length === 0) return; // 不在编辑器中，直接返回
-  
-  inputs.forEach(input => {
-    const color = input.dataset.color;
-    input.value = DEFAULT_COLOR_WEIGHTS[color];
-  });
-  updateWeightsTotal();
-}
-
-// 添加更新权重总计的函数
-function updateWeightsTotal() {
-  const weightsTotal = document.getElementById('weights-total');
-  if (weightsTotal) {
-    const inputs = document.querySelectorAll('.color-weight-input');
-    if (inputs.length === 0) return; // 不在编辑器中，直接返回
-    
-    const total = Array.from(inputs)
-      .reduce((sum, input) => sum + (parseInt(input.value) || 0), 0);
-    weightsTotal.textContent = total;
-    weightsTotal.style.color = total === 100 ? 'green' : 'red';
-  }
-}
-
-  }
-}
-
+/*
+  createParticle(r, c, type)
+  - 作用：在格子 (r,c) 位置生成一次短暂的粒子特效（DOM 元素），用于碎裂、飞溅等视觉反馈。
+  - 参数：
       r, c: 格子坐标（行, 列）
       type: 特效类型（'debris','ice-shard','bubble','crush' 等）
   - 副作用：向 `vfxContainer` 添加临时 DOM 元素，1s 后自动移除。
@@ -2968,9 +2936,6 @@ async function transmuteTile(r, c) {
   }
   renderBoard();
 }
-
-/*
-  handleOrangeMatch4()
 
 /*
   handleOrangeMatch4()

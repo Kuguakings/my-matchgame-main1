@@ -29,16 +29,16 @@ let levelTargets = {}; // { color: count }
 const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
 
 // 默认颜色权重配置（用于没有设置权重的关卡）
-// 红、白、蓝、紫、绿各占60%的1/5 = 12%
-// 橙色和黄色各占40%的1/2 = 20%
+// 红、白、蓝、紫、绿各占16%（共80%）
+// 橙色和黄色各占10%（共20%）
 const DEFAULT_COLOR_WEIGHTS = {
-  red: 12,
-  blue: 12,
-  green: 12,
-  purple: 12,
-  white: 12,
-  orange: 20,
-  yellow: 20,
+  red: 16,
+  blue: 16,
+  green: 16,
+  purple: 16,
+  white: 16,
+  orange: 10,
+  yellow: 10,
 };
 
 // 当前关卡的颜色权重配置
@@ -631,9 +631,53 @@ function _renderBoardCells(container) {
         cell.classList.add("cell-placeholder");
       }
 
+      // 添加进入动画类（初始状态）
+      cell.classList.add("cell-entering");
       container.appendChild(cell);
     }
   }
+}
+
+/*
+  animateLevelEntrance()
+  - 为游戏网格添加进入动画效果
+  - 使用淡入+缩放动画，按行列顺序依次出现
+*/
+function animateLevelEntrance() {
+  const cells = gridContainer.querySelectorAll(".cell, .cell-placeholder");
+  if (!cells || cells.length === 0) return;
+
+  // 清除之前的动画类
+  cells.forEach((cell) => {
+    cell.classList.remove("cell-entering");
+  });
+
+  // 为每个单元格添加延迟动画
+  cells.forEach((cell, index) => {
+    const r = parseInt(cell.dataset.row) || 0;
+    const c = parseInt(cell.dataset.col) || 0;
+
+    // 计算延迟：基于位置，从中心向外扩散
+    const centerR = GRID_SIZE / 2;
+    const centerC = GRID_SIZE / 2;
+    const distance = Math.sqrt(
+      Math.pow(r - centerR, 2) + Math.pow(c - centerC, 2)
+    );
+    const maxDistance = Math.sqrt(
+      Math.pow(GRID_SIZE / 2, 2) + Math.pow(GRID_SIZE / 2, 2)
+    );
+    const delay = (distance / maxDistance) * 400; // 总动画时长约400ms
+
+    // 设置动画延迟
+    cell.style.animationDelay = `${delay}ms`;
+    cell.classList.add("cell-entering");
+
+    // 动画结束后移除类
+    setTimeout(() => {
+      cell.classList.remove("cell-entering");
+      cell.style.animationDelay = "";
+    }, delay + 300);
+  });
 }
 
 function handleCellClick(e) {
@@ -3728,6 +3772,9 @@ function startLevel(id) {
   createBoard(lvlDef?.initialBoard);
   renderBoard();
 
+  // 添加进入动画
+  animateLevelEntrance();
+
   // 再次确保菜单被隐藏（防御性，延迟一点确保 DOM 更新完成）
   setTimeout(() => {
     hideMenu();
@@ -5039,6 +5086,7 @@ function openLevelEditor() {
     input.style.width = "80px";
     input.style.padding = "4px";
     input.dataset.color = color;
+    input.value = DEFAULT_COLOR_WEIGHTS[color] || 0; // 初始化默认值
     weightInputs[color] = input;
 
     const percentLabel = document.createElement("span");
@@ -5078,6 +5126,9 @@ function openLevelEditor() {
     weightInputs[color].addEventListener("input", updateWeightsTotal);
     weightInputs[color].addEventListener("change", updateWeightsTotal);
   });
+
+  // 初始化总权重显示（延迟执行以确保DOM已创建）
+  setTimeout(() => updateWeightsTotal(), 0);
 
   const weightsWrap = document.createElement("div");
   weightsWrap.appendChild(weightsLabel);

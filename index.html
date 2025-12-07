@@ -39,33 +39,31 @@
       <div class="editor-controls">
         <div class="weight-controls">
           <h3>方块权重配置</h3>
-          <div class="weight-slider">
-            <label>Red: <span id="red-weight">18</span></label>
-            <input type="range" min="1" max="30" value="18" data-color="red">
-          </div>
-          <div class="weight-slider">
-            <label>Blue: <span id="blue-weight">18</span></label>
-            <input type="range" min="1" max="30" value="18" data-color="blue">
-          </div>
-          <div class="weight-slider">
-            <label>Green: <span id="green-weight">18</span></label>
-            <input type="range" min="1" max="30" value="18" data-color="green">
-          </div>
-          <div class="weight-slider">
-            <label>Purple: <span id="purple-weight">18</span></label>
-            <input type="range" min="1" max="30" value="18" data-color="purple">
-          </div>
-          <div class="weight-slider">
-            <label>White: <span id="white-weight">18</span></label>
-            <input type="range" min="1" max="30" value="18" data-color="white">
-          </div>
-          <div class="weight-slider">
-            <label>Orange: <span id="orange-weight">5</span></label>
-            <input type="range" min="1" max="30" value="5" data-color="orange">
-          </div>
-          <div class="weight-slider">
-            <label>Yellow: <span id="yellow-weight">5</span></label>
-            <input type="range" min="1" max="30" value="5" data-color="yellow">
+          <div class="weight-inputs">
+            <div class="weight-input">
+              <label>红色 (Red): <input type="number" min="0" max="100" value="12" data-color="red" class="color-weight-input"></label>
+            </div>
+            <div class="weight-input">
+              <label>蓝色 (Blue): <input type="number" min="0" max="100" value="12" data-color="blue" class="color-weight-input"></label>
+            </div>
+            <div class="weight-input">
+              <label>绿色 (Green): <input type="number" min="0" max="100" value="12" data-color="green" class="color-weight-input"></label>
+            </div>
+            <div class="weight-input">
+              <label>紫色 (Purple): <input type="number" min="0" max="100" value="12" data-color="purple" class="color-weight-input"></label>
+            </div>
+            <div class="weight-input">
+              <label>白色 (White): <input type="number" min="0" max="100" value="12" data-color="white" class="color-weight-input"></label>
+            </div>
+            <div class="weight-input">
+              <label>橙色 (Orange): <input type="number" min="0" max="100" value="20" data-color="orange" class="color-weight-input"></label>
+            </div>
+            <div class="weight-input">
+              <label>黄色 (Yellow): <input type="number" min="0" max="100" value="20" data-color="yellow" class="color-weight-input"></label>
+            </div>
+            <div class="weight-total">
+              总计: <span id="weights-total">100</span>%
+            </div>
           </div>
         </div>
       </div>

@@ -23,12 +23,18 @@ export class LevelManager {
       if (typeof loadLevels === "function") {
         await loadLevels();
       } else {
-        // 如果没有外部加载函数，使用内置数据
-        console.log("使用内置关卡数据");
+        // 直接加载本地levels.json文件
+        console.log("加载本地关卡数据...");
+        const response = await fetch('./levels.json');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        window.LEVELS = await response.json();
+        console.log("本地关卡数据加载成功");
       }
 
-      // 确保window.LEVELS存在
-      if (typeof window.LEVELS === "undefined") {
+      // 确保window.LEVELS存在且是数组
+      if (!Array.isArray(window.LEVELS)) {
         window.LEVELS = [];
       }
 
@@ -39,9 +45,12 @@ export class LevelManager {
       document.dispatchEvent(new CustomEvent("levelsLoaded"));
 
     } catch (err) {
-      console.warn("无法通过 API 加载关卡，使用内置回退关卡。错误：", err);
-      // 使用内置回退关卡
+      console.error("关卡数据加载失败:", err);
+      // 使用空数组作为回退
+      window.LEVELS = [];
       this.levelsData = [];
+      // 仍然触发事件，让游戏继续运行
+      document.dispatchEvent(new CustomEvent("levelsLoaded"));
     }
   }
 
@@ -367,6 +376,12 @@ export class LevelManager {
    * 显示主菜单
    */
   static showMainMenu() {
+    // 隐藏加载屏幕
+    const loadingScreen = document.getElementById("loading-screen");
+    if (loadingScreen) {
+      loadingScreen.classList.add("hidden");
+    }
+
     // 隐藏游戏容器
     const gameContainer = document.getElementById("game-container");
     if (gameContainer) {

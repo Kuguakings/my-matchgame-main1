@@ -61,9 +61,187 @@ vfxContainer.classList.add("vfx-container");
 let loadingProgress = 0;
 let isLoadingComplete = false;
 
+/*
+  initLoadingScreen()
+  - 初始化加载屏幕UI
+*/
+function initLoadingScreen() {
+  const loadingScreen = document.getElementById("loading-screen");
+  const startBtn = document.getElementById("start-game-btn");
+
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      hideLoadingScreen();
+      showMainMenu();
+    });
+  }
+}
+
+/*
+  startLoading()
+  - 开始加载流程，显示进度条
+*/
+function startLoading() {
+  updateLoadingProgress(0);
+
+  // 模拟加载进度
+  const loadingSteps = [
+    { progress: 20, task: "初始化游戏引擎..." },
+    { progress: 40, task: "加载游戏资源..." },
+    { progress: 60, task: "加载关卡数据..." },
+    { progress: 80, task: "准备游戏界面..." },
+    { progress: 100, task: "加载完成！" },
+  ];
+
+  let currentStep = 0;
+  const stepInterval = setInterval(() => {
+    if (currentStep < loadingSteps.length) {
+      const step = loadingSteps[currentStep];
+      updateLoadingProgress(step.progress, step.task);
+      currentStep++;
+
+      if (step.progress === 100) {
+        clearInterval(stepInterval);
+        // 实际加载数据
+        loadGameData().then(() => {
+          isLoadingComplete = true;
+          showStartButton();
+        });
+      }
+    }
+  }, 300);
+}
+
+/*
+  updateLoadingProgress(progress, task)
+  - 更新加载进度条
+*/
+function updateLoadingProgress(progress, task = "") {
+  loadingProgress = progress;
+  const progressBar = document.getElementById("loading-progress-bar");
+  const progressText = document.getElementById("loading-progress-text");
+
+  if (progressBar) {
+    // 创建或更新进度条填充元素
+    let fillElement = progressBar.querySelector(".progress-fill");
+    if (!fillElement) {
+      fillElement = document.createElement("div");
+      fillElement.className = "progress-fill";
+      fillElement.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: linear-gradient(90deg, #4ecdc4, #45b7d1);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+        width: 0%;
+      `;
+      progressBar.appendChild(fillElement);
+    }
+    fillElement.style.width = `${progress}%`;
+  }
+
+  if (progressText) {
+    progressText.textContent = task || `${progress}%`;
+  }
+}
+
+/*
+  loadGameData()
+  - 加载游戏数据（设置和关卡）
+*/
+function loadGameData() {
+  return new Promise((resolve) => {
+    // Load user settings and levels
+    try {
+      loadSettings();
+    } catch (e) {
+      console.warn("loadSettings failed:", e);
+    }
+
+    if (typeof loadLevels === "function") {
+      loadLevels()
+        .then(() => {
+          // 数据加载完成后初始化游戏（但不显示菜单，等待用户点击开始游戏）
+          initGame();
+          resolve();
+        })
+        .catch((err) => {
+          console.warn("loadLevels failed:", err);
+          // 即使失败也初始化游戏
+          initGame();
+          resolve();
+        });
+    } else {
+      // 如果没有 loadLevels 函数，直接初始化
+      initGame();
+      resolve();
+    }
+  });
+}
+
+/*
+  showStartButton()
+  - 显示开始游戏按钮
+*/
+function showStartButton() {
+  const startBtn = document.getElementById("start-game-btn");
+  if (startBtn) {
+    startBtn.classList.remove("hidden");
+    startBtn.style.animation = "fadeIn 0.5s ease-in";
+  }
+}
+
+/*
+  hideLoadingScreen()
+  - 隐藏加载屏幕
+*/
+function hideLoadingScreen() {
+  const loadingScreen = document.getElementById("loading-screen");
+  if (loadingScreen) {
+    loadingScreen.classList.add("hidden");
+    setTimeout(() => {
+      loadingScreen.style.display = "none";
+    }, 500);
+  }
+}
+
+/*
+  showMainMenu()
+  - 显示主菜单
+*/
+function showMainMenu() {
+  const mainMenuScreen = document.getElementById("main-menu-screen");
+  if (mainMenuScreen) {
+    mainMenuScreen.classList.remove("hidden");
+    mainMenuScreen.style.display = "flex";
+  }
+
+  // 隐藏游戏容器
+  const gameContainer = document.getElementById("game-container");
+  if (gameContainer) {
+    gameContainer.classList.add("hidden");
+  }
+}
+
+/*
+  hideMainMenu()
+  - 隐藏主菜单
+*/
+function hideMainMenu() {
+  const mainMenuScreen = document.getElementById("main-menu-screen");
+  if (mainMenuScreen) {
+    mainMenuScreen.classList.add("hidden");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // 初始化加载屏幕
   initLoadingScreen();
+
+  // 开始加载流程
+  startLoading();
 
   // 确保 gridContainer 存在
   if (!gridContainer) {
@@ -150,26 +328,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Load user settings and levels BEFORE starting the first level.
-  try {
-    loadSettings();
-  } catch (e) {
-    /* noop */
-  }
-
-  if (typeof loadLevels === "function") {
-    loadLevels()
-      .then(() => {
-        // Levels loaded (or fallback applied), now safe to start game
-        initGame();
-      })
-      .catch((err) => {
-        console.warn("loadLevels failed:", err);
-        initGame();
-      });
-  } else {
-    initGame();
-  }
+  // 注意：数据加载和游戏初始化现在由 startLoading() 和 loadGameData() 处理
+  // 不再在这里直接调用 loadLevels 和 initGame
 });
 
 /*
@@ -3795,7 +3955,8 @@ function startLevel(id) {
 
 /*
   initGame()
-  - 游戏初始化入口：在关卡与设置加载后调用，渲染菜单并默认开始第一个已解锁关卡（或第1关）。
+  - 游戏初始化入口：在关卡与设置加载后调用，渲染菜单
+  - 注意：现在不再直接显示菜单，而是等待用户从主菜单选择
 */
 function initGame() {
   // Ensure levels are loaded
@@ -3812,6 +3973,163 @@ function initGame() {
   setTimeout(() => {
     initMainMenuButtons();
   }, 100);
+}
+
+/*
+  initMainMenuButtons()
+  - 初始化主菜单按钮事件
+*/
+function initMainMenuButtons() {
+  // 选择关卡按钮
+  const selectLevelBtn = document.getElementById("btn-select-level");
+  if (selectLevelBtn) {
+    selectLevelBtn.addEventListener("click", () => {
+      hideMainMenu();
+      showLevelSelection();
+    });
+  }
+
+  // 设置按钮
+  const settingsBtn = document.getElementById("btn-settings");
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", () => {
+      showSettings();
+    });
+  }
+
+  // 退出游戏按钮
+  const quitBtn = document.getElementById("btn-quit-game");
+  if (quitBtn) {
+    quitBtn.addEventListener("click", () => {
+      if (confirm("确定要退出游戏吗？")) {
+        // 可以在这里添加退出逻辑，比如返回加载屏幕或关闭窗口
+        window.location.reload();
+      }
+    });
+  }
+
+  // 关卡编辑器按钮（主菜单右上角）
+  const editorBtn = document.getElementById("btn-level-editor-main");
+  if (editorBtn) {
+    editorBtn.addEventListener("click", () => {
+      try {
+        openLevelEditor();
+      } catch (e) {
+        console.warn("打开关卡编辑器失败", e);
+      }
+    });
+  }
+
+  // 返回主菜单按钮（从关卡选择界面）
+  const backToMainBtn = document.getElementById("btn-back-to-main-menu");
+  if (backToMainBtn) {
+    backToMainBtn.addEventListener("click", () => {
+      hideLevelSelection();
+      showMainMenu();
+    });
+  }
+
+  // 关闭设置按钮
+  const closeSettingsBtn = document.getElementById("btn-close-settings");
+  if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener("click", () => {
+      hideSettings();
+    });
+  }
+}
+
+/*
+  showLevelSelection()
+  - 显示关卡选择界面
+*/
+function showLevelSelection() {
+  const overlay = document.getElementById("menu-overlay");
+  if (overlay) {
+    overlay.classList.remove("hidden");
+    overlay.style.display = "flex";
+    renderLevelMenu();
+  }
+}
+
+/*
+  hideLevelSelection()
+  - 隐藏关卡选择界面
+*/
+function hideLevelSelection() {
+  const overlay = document.getElementById("menu-overlay");
+  if (overlay) {
+    overlay.classList.add("hidden");
+    overlay.style.display = "none";
+  }
+}
+
+/*
+  showSettings()
+  - 显示设置界面
+*/
+function showSettings() {
+  const overlay = document.getElementById("settings-overlay");
+  if (overlay) {
+    overlay.classList.remove("hidden");
+    overlay.style.display = "flex";
+    renderSettings();
+  }
+}
+
+/*
+  hideSettings()
+  - 隐藏设置界面
+*/
+function hideSettings() {
+  const overlay = document.getElementById("settings-overlay");
+  if (overlay) {
+    overlay.classList.add("hidden");
+    overlay.style.display = "none";
+  }
+}
+
+/*
+  renderSettings()
+  - 渲染设置界面内容
+*/
+function renderSettings() {
+  const settingsContent = document.getElementById("settings-content");
+  if (!settingsContent) return;
+
+  settingsContent.innerHTML = `
+    <div class="settings-section">
+      <h3>游戏设置</h3>
+      <label style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+        <input type="checkbox" id="auto-jump-setting" ${
+          window.GameSettings?.autoJumpNext ? "checked" : ""
+        }>
+        <span>自动跳转下一关（完成关卡后自动进入下一关）</span>
+      </label>
+    </div>
+    <div class="settings-section">
+      <h3>关于</h3>
+      <p>元素消消乐 v${GAME_VERSION}</p>
+      <p>一款经典的消除类游戏</p>
+    </div>
+  `;
+
+  // 绑定自动跳转设置
+  const autoJumpCheckbox = document.getElementById("auto-jump-setting");
+  if (autoJumpCheckbox) {
+    autoJumpCheckbox.addEventListener("change", (e) => {
+      window.GameSettings = window.GameSettings || {};
+      window.GameSettings.autoJumpNext = !!e.target.checked;
+      saveSettings();
+    });
+  }
+}
+
+/*
+  showMenu()
+  - 兼容旧代码，直接调用showLevelSelection
+*/
+function showMenu() {
+  showLevelSelection();
 }
 
 // levels 加载已在顶部 DOMContentLoaded 回调中处理（避免重复调用）

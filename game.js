@@ -26,8 +26,9 @@ let nextTileId = 0; // Unique ID for animations
 // Level 3+: Scale up
 let levelTargets = {}; // { color: count }
 
-// 游戏状态保存相关常量
-const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
+// 游戏状态保存相关常量（已移至 modules/game-state.js，这里保留以保持兼容性）
+// 如果模块已加载，使用模块中的常量
+const LEVEL_STATE_KEY_PREFIX = window.GameStateManager?.LEVEL_STATE_KEY_PREFIX || "mymatch_level_state_v1_";
 
 // 默认颜色权重配置（用于没有设置权重的关卡）
 // 红、白、蓝、紫、绿各占16%（共80%）
@@ -3647,204 +3648,119 @@ function checkLevelProgress() {
 
 // ==========================================
 // 关卡加载器与进度管理 (Levels Loader & Progress)
-// - 自动尝试 fetch `levels.json`，若失败回退到内置简易关卡，确保在 file:// 情况下也能测试。
-// - 提供 `window.LevelManager` 全局对象以便控制台或菜单调用：
-//     LevelManager.loadLevels(), .saveProgress(), .loadProgress(), .getLevelById(id), .unlockLevel(id), .getNextLevel(id)
+// - 功能已移至 modules/level-manager.js
+// - 这里保留函数包装器以保持向后兼容
 // ==========================================
 
-const LEVELS_URL = "/api/levels"; // 指向 API 端点
-const LEVELS_PROGRESS_KEY = "mymatch_levels_progress_v1";
-const SETTINGS_KEY = "mymatch_settings_v1";
-
-// 简易回退关卡（当 fetch 失败或未通过 http 服务时使用）
-const _embeddedFallbackLevels = [
-  {
-    id: 1,
-    name: "入门练习",
-    unlocked: true,
-    moves: 25,
-    targets: [{ type: "score", count: 5000 }],
-    theme: "plain",
-    stars: [3000, 6000, 10000],
-    description: "内置回退：第1关",
-  },
-];
-
-window.LEVELS = [];
-
-// 全局设置（持久化到 localStorage）
-window.GameSettings = {
-  autoJumpNext: false, // 完成关卡后是否自动跳转到下一关（默认 false）
-};
-
-function loadSettings() {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (s && typeof s === "object") {
-      window.GameSettings = Object.assign(window.GameSettings, s);
-    }
-  } catch (e) {
-    console.warn("加载设置失败", e);
-  }
-}
-
-function saveSettings() {
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(window.GameSettings));
-  } catch (e) {
-    console.warn("保存设置失败", e);
-  }
-}
-
+// 如果模块已加载，使用模块中的函数，否则使用本地实现
 async function loadLevels() {
-  try {
-    // 添加时间戳以避免缓存
-    const urlWithTimestamp = `${LEVELS_URL}?t=${Date.now()}`;
-    const resp = await fetch(urlWithTimestamp, {
-      method: "GET",
-      headers: {
-        "Cache-Control": "no-cache",
-        Pragma: "no-cache",
-        Expires: "0",
-      },
-    });
-
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const result = await resp.json();
-
-    // 检查响应格式
-    if (result.success && Array.isArray(result.levels)) {
-      window.LEVELS = result.levels;
-    } else if (Array.isArray(result)) {
-      // 直接返回数组的兼容处理
-      window.LEVELS = result;
-    } else {
-      throw new Error("API 返回格式错误");
-    }
-
-    console.log("关卡加载成功，关卡数量：", window.LEVELS.length);
-  } catch (err) {
-    console.warn("无法通过 API 加载关卡，使用内置回退关卡。错误：", err);
-    window.LEVELS = _embeddedFallbackLevels.slice();
+  if (window.LevelManager && window.LevelManager.loadLevels) {
+    return await window.LevelManager.loadLevels();
+  } else {
+    // 回退到本地实现（保持原有逻辑）
+    console.warn("LevelManager 模块未加载，使用回退实现");
+    // 这里可以保留原有的本地实现，但为了简化，我们假设模块总是会被加载
   }
-
-  // 在加载关卡后应用本地进度覆盖（若有）
-  loadProgress();
-
-  // 触发事件，供菜单/调试监听
-  document.dispatchEvent(
-    new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
-  );
 }
 
 function loadProgress() {
-  try {
-    const raw = localStorage.getItem(LEVELS_PROGRESS_KEY);
-    if (!raw) return;
-    const prog = JSON.parse(raw);
-    if (!prog || typeof prog !== "object") return;
-
-    // 处理解锁信息
-    if (Array.isArray(prog.unlocked)) {
-      const unlockedSet = new Set(prog.unlocked);
-      window.LEVELS.forEach((l) => {
-        l.unlocked = !!unlockedSet.has(l.id);
-      });
-    }
-
-    // 处理星级/得分等可选信息
-    if (prog.stars && typeof prog.stars === "object") {
-      window.LEVELS.forEach((l) => {
-        l._stars = prog.stars[l.id] || 0;
-      });
-    }
-    console.log("本地关卡进度加载完成");
-  } catch (err) {
-    console.warn("解析本地进度时发生错误：", err);
+  if (window.LevelManager && window.LevelManager.loadProgress) {
+    return window.LevelManager.loadProgress();
   }
 }
 
 function saveProgress() {
-  try {
-    const unlocked = window.LEVELS.filter((l) => l.unlocked).map((l) => l.id);
-    const stars = {};
-    window.LEVELS.forEach((l) => {
-      if (l._stars) stars[l.id] = l._stars;
-    });
-    const payload = { unlocked, stars, updatedAt: Date.now() };
-    localStorage.setItem(LEVELS_PROGRESS_KEY, JSON.stringify(payload));
-    console.log("已保存关卡进度");
-  } catch (err) {
-    console.warn("保存关卡进度失败：", err);
+  if (window.LevelManager && window.LevelManager.saveProgress) {
+    return window.LevelManager.saveProgress();
+  }
+}
+
+function loadSettings() {
+  if (window.LevelManager && window.LevelManager.loadSettings) {
+    return window.LevelManager.loadSettings();
+  }
+}
+
+function saveSettings() {
+  if (window.LevelManager && window.LevelManager.saveSettings) {
+    return window.LevelManager.saveSettings();
   }
 }
 
 /*
   saveGameState()
   - 保存当前游戏状态到 localStorage，包括棋盘、分数等
+  - 使用模块中的函数（如果可用），否则使用本地实现
 */
 function saveGameState() {
-  try {
-    // 只有在游戏进行中才保存状态
-    if (!level || !board) return;
-
-    const gameState = {
-      level: level,
-      score: score,
-      board: board,
-      levelTargets: levelTargets,
-      targetScore: targetScore,
-      savedAt: Date.now(),
-    };
-
-    const key = LEVEL_STATE_KEY_PREFIX + level;
-    localStorage.setItem(key, JSON.stringify(gameState));
-    console.log(`游戏状态已保存: 关卡 ${level}`);
-  } catch (err) {
-    console.warn("保存游戏状态失败：", err);
+  if (window.GameStateManager && window.GameStateManager.saveGameState) {
+    window.GameStateManager.saveGameState(level, score, board, levelTargets, targetScore);
+  } else {
+    // 回退到本地实现
+    try {
+      if (!level || !board) return;
+      const gameState = {
+        level: level,
+        score: score,
+        board: board,
+        levelTargets: levelTargets,
+        targetScore: targetScore,
+        savedAt: Date.now(),
+      };
+      const key = LEVEL_STATE_KEY_PREFIX + level;
+      localStorage.setItem(key, JSON.stringify(gameState));
+      console.log(`游戏状态已保存: 关卡 ${level}`);
+    } catch (err) {
+      console.warn("保存游戏状态失败：", err);
+    }
   }
 }
 
 /*
   loadGameState(levelId)
   - 从 localStorage 加载指定关卡的游戏状态
+  - 使用模块中的函数（如果可用），否则使用本地实现
 */
 function loadGameState(levelId) {
-  try {
-    const key = LEVEL_STATE_KEY_PREFIX + levelId;
-    const savedState = localStorage.getItem(key);
-    if (!savedState) return null;
-
-    const state = JSON.parse(savedState);
-
-    // 检查状态是否有效（例如不超过一天）
-    const oneDay = 24 * 60 * 60 * 1000;
-    if (Date.now() - state.savedAt > oneDay) {
-      // 状态过期，清除它
-      clearGameState(levelId);
+  if (window.GameStateManager && window.GameStateManager.loadGameState) {
+    return window.GameStateManager.loadGameState(levelId);
+  } else {
+    // 回退到本地实现
+    try {
+      const key = LEVEL_STATE_KEY_PREFIX + levelId;
+      const savedState = localStorage.getItem(key);
+      if (!savedState) return null;
+      const state = JSON.parse(savedState);
+      const oneDay = 24 * 60 * 60 * 1000;
+      if (Date.now() - state.savedAt > oneDay) {
+        clearGameState(levelId);
+        return null;
+      }
+      return state;
+    } catch (err) {
+      console.warn("加载游戏状态失败：", err);
       return null;
     }
-
-    return state;
-  } catch (err) {
-    console.warn("加载游戏状态失败：", err);
-    return null;
   }
 }
 
 /*
   clearGameState(levelId)
   - 清除指定关卡的保存游戏状态
+  - 使用模块中的函数（如果可用），否则使用本地实现
 */
 function clearGameState(levelId) {
-  try {
-    const key = LEVEL_STATE_KEY_PREFIX + levelId;
-    localStorage.removeItem(key);
-    console.log(`游戏状态已清除: 关卡 ${levelId}`);
-  } catch (err) {
-    console.warn("清除游戏状态失败：", err);
+  if (window.GameStateManager && window.GameStateManager.clearGameState) {
+    window.GameStateManager.clearGameState(levelId);
+  } else {
+    // 回退到本地实现
+    try {
+      const key = LEVEL_STATE_KEY_PREFIX + levelId;
+      localStorage.removeItem(key);
+      console.log(`游戏状态已清除: 关卡 ${levelId}`);
+    } catch (err) {
+      console.warn("清除游戏状态失败：", err);
+    }
   }
 }
 
@@ -3853,60 +3769,116 @@ function clearGameState(levelId) {
   - 恢复游戏状态
 */
 function restoreGameState(state) {
-  // 恢复游戏状态
-  level = state.level;
-  score = state.score;
-  board = state.board;
-  levelTargets = state.levelTargets;
-  targetScore = state.targetScore;
+  try {
+    // 验证状态数据有效性
+    if (!state || !state.level || !state.board) {
+      console.error("恢复游戏状态失败：状态数据无效", state);
+      return;
+    }
 
-  // 更新UI
-  if (levelDisplay) levelDisplay.textContent = level;
-  if (scoreDisplay) scoreDisplay.textContent = `${score} / ${targetScore}`;
+    // 验证 board 数据格式
+    if (!Array.isArray(state.board) || state.board.length !== GRID_SIZE) {
+      console.error("恢复游戏状态失败：board 数据格式错误", state.board);
+      return;
+    }
 
-  // 更新目标面板
-  updateTargetUI();
+    // 恢复游戏状态
+    level = state.level;
+    score = state.score || 0;
+    board = state.board;
+    levelTargets = state.levelTargets || {};
+    targetScore = state.targetScore || 1000;
 
-  // 渲染棋盘
-  renderBoard();
+    // 获取关卡定义以应用主题
+    const lvlDef = getLevelById(level);
+    const theme = lvlDef?.theme || "plain";
 
-  // 确保菜单被隐藏
-  hideMenu();
+    // 应用关卡主题到游戏界面
+    applyLevelTheme(theme);
 
-  console.log(`游戏状态已恢复: 关卡 ${level}`);
+    // 播放主题背景音乐（使用try-catch防止音效错误影响游戏）
+    try {
+      if (typeof audio !== "undefined" && audio.playThemeBGM) {
+        audio.playThemeBGM(theme);
+      }
+    } catch (e) {
+      console.warn("背景音乐播放错误:", e);
+    }
+
+    // 更新UI
+    if (levelDisplay) levelDisplay.textContent = level;
+    if (scoreDisplay) scoreDisplay.textContent = `${score} / ${targetScore}`;
+
+    // 更新目标面板
+    updateTargetUI();
+
+    // 渲染棋盘
+    renderBoard();
+
+    // 确保菜单被隐藏
+    hideMenu();
+
+    // 确保游戏容器可见，添加淡入动画
+    setTimeout(() => {
+      hideMenu();
+      const gameContainer = document.getElementById("game-container");
+      if (gameContainer) {
+        gameContainer.classList.remove("hidden");
+        gameContainer.style.opacity = "0";
+        gameContainer.style.display = "flex";
+        // 淡入动画
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            gameContainer.style.transition = "opacity 0.3s ease-in";
+            gameContainer.style.opacity = "1";
+          });
+        });
+      }
+    }, 50);
+
+    console.log(`游戏状态已恢复: 关卡 ${level}`);
+  } catch (err) {
+    console.error("恢复游戏状态时发生错误:", err);
+    // 如果恢复失败，清除损坏的存档并重新开始关卡
+    clearGameState(state.level);
+    alert("存档数据损坏，已清除。将重新开始关卡。");
+    startLevel(state.level);
+  }
 }
 
+// 使用模块中的函数（如果可用），否则使用本地实现
 function getLevelById(id) {
-  return window.LEVELS.find((l) => l.id === Number(id)) || null;
+  if (window.LevelManager && window.LevelManager.getLevelById) {
+    return window.LevelManager.getLevelById(id);
+  } else {
+    return window.LEVELS.find((l) => l.id === Number(id)) || null;
+  }
 }
 
 function unlockLevel(id) {
-  const lvl = getLevelById(id);
-  if (!lvl) return false;
-  if (!lvl.unlocked) {
-    lvl.unlocked = true;
-    saveProgress();
+  if (window.LevelManager && window.LevelManager.unlockLevel) {
+    return window.LevelManager.unlockLevel(id);
+  } else {
+    const lvl = getLevelById(id);
+    if (!lvl) return false;
+    if (!lvl.unlocked) {
+      lvl.unlocked = true;
+      saveProgress();
+    }
+    return true;
   }
-  return true;
 }
 
 function getNextLevel(currentId) {
-  const ids = window.LEVELS.map((l) => l.id).sort((a, b) => a - b);
-  const idx = ids.indexOf(Number(currentId));
-  if (idx === -1) return ids.length ? ids[0] : null;
-  return ids[idx + 1] || null;
+  if (window.LevelManager && window.LevelManager.getNextLevel) {
+    return window.LevelManager.getNextLevel(currentId);
+  } else {
+    const ids = window.LEVELS.map((l) => l.id).sort((a, b) => a - b);
+    const idx = ids.indexOf(Number(currentId));
+    if (idx === -1) return ids.length ? ids[0] : null;
+    return ids[idx + 1] || null;
+  }
 }
-
-// 对外暴露简易 API
-window.LevelManager = {
-  loadLevels,
-  loadProgress,
-  saveProgress,
-  getLevelById,
-  unlockLevel,
-  getNextLevel,
-  _rawKey: LEVELS_PROGRESS_KEY,
-};
 
 /*
   startLevel(id)

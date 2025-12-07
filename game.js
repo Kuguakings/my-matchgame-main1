@@ -739,6 +739,13 @@ function renderBoard() {
       retryContainer.appendChild(vfxContainer);
       // 继续使用 retryContainer 进行渲染
       _renderBoardCells(retryContainer);
+      // 重新应用选中状态
+      if (selectedCell) {
+        const cell = getCellElement(selectedCell.r, selectedCell.c);
+        if (cell) {
+          cell.classList.add("selected");
+        }
+      }
       return;
     }
     return;
@@ -759,6 +766,14 @@ function renderBoard() {
   gridContainer.appendChild(vfxContainer);
 
   _renderBoardCells(gridContainer);
+
+  // 重新应用选中状态（如果存在）
+  if (selectedCell) {
+    const cell = getCellElement(selectedCell.r, selectedCell.c);
+    if (cell) {
+      cell.classList.add("selected");
+    }
+  }
 }
 
 function _renderBoardCells(container) {
@@ -804,19 +819,16 @@ function _renderBoardCells(container) {
           cell.classList.add(`voltage-${tile.voltage}`);
         }
 
-        // Re-apply selection style
-        if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
-          cell.classList.add("selected");
-        }
-
+        // 注意：选中状态由selectCell/deselectCell函数管理，这里不添加selected类
+        // 避免每次renderBoard都重新添加事件监听器
         cell.addEventListener("click", handleCellClick);
       } else {
         // Placeholder for empty space
         cell.classList.add("cell-placeholder");
       }
 
-      // 添加进入动画类（初始状态）
-      cell.classList.add("cell-entering");
+      // 注意：cell-entering 类只在 animateLevelEntrance() 中添加，不在这里添加
+      // 避免每次renderBoard都触发旋转动画
       container.appendChild(cell);
     }
   }
@@ -918,13 +930,31 @@ function handleCellClick(e) {
 }
 
 function selectCell(r, c) {
+  // 移除之前的选中状态
+  if (selectedCell) {
+    const oldCell = getCellElement(selectedCell.r, selectedCell.c);
+    if (oldCell) {
+      oldCell.classList.remove("selected");
+    }
+  }
+
   selectedCell = { r, c };
-  renderBoard();
+
+  // 只更新新选中方块的样式，不重新渲染整个棋盘
+  const newCell = getCellElement(r, c);
+  if (newCell) {
+    newCell.classList.add("selected");
+  }
 }
 
 function deselectCell() {
+  if (selectedCell) {
+    const cell = getCellElement(selectedCell.r, selectedCell.c);
+    if (cell) {
+      cell.classList.remove("selected");
+    }
+  }
   selectedCell = null;
-  renderBoard();
 }
 
 async function swapCells(r1, c1, r2, c2) {
@@ -1796,7 +1826,9 @@ function applyGravity() {
     }
   }
 
+  // 生成新方块填充空位
   for (let c = 0; c < GRID_SIZE; c++) {
+    // 计算这一列有多少空位
     let emptyCount = 0;
     for (let r = 0; r < GRID_SIZE; r++) {
       if (board[r][c] === null) {
@@ -1804,10 +1836,12 @@ function applyGravity() {
       }
     }
 
-    let currentR = 0;
+    // 从顶部开始填充空位
+    let spawnIndex = 0;
     for (let r = 0; r < GRID_SIZE; r++) {
       if (board[r][c] === null) {
-        let spawnRow = currentR - emptyCount;
+        // 新方块从网格上方（负行）开始动画
+        let spawnRow = -emptyCount + spawnIndex;
 
         let color = getWeightedRandomColor();
         // Try to avoid matching the tile below
@@ -1842,7 +1876,7 @@ function applyGravity() {
           newC: c,
         });
 
-        currentR++;
+        spawnIndex++;
       }
     }
   }

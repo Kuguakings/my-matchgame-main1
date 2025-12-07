@@ -29,6 +29,8 @@ let levelTargets = {}; // { color: count }
 const LEVEL_STATE_KEY_PREFIX = "mymatch_level_state_v1_";
 
 // 默认颜色权重配置（用于没有设置权重的关卡）
+// 红、白、蓝、紫、绿各占60%的1/5 = 12%
+// 橙色和黄色各占40%的1/2 = 20%
 const DEFAULT_COLOR_WEIGHTS = {
   red: 12,
   blue: 12,
@@ -56,6 +58,12 @@ vfxContainer.classList.add("vfx-container");
 // 初始 append 在 DOMContentLoaded 回调中执行： gridContainer.appendChild(vfxContainer);
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 确保 gridContainer 存在
+  if (!gridContainer) {
+    console.error("gridContainer not found in DOMContentLoaded!");
+    return;
+  }
+
   gridContainer.appendChild(vfxContainer);
 
   // 初始化版本号显示
@@ -533,14 +541,47 @@ function applyFreeze(tile) {
 }
 
 function renderBoard() {
+  // 防御性检查：确保 gridContainer 存在
+  if (!gridContainer) {
+    console.error(
+      "renderBoard: gridContainer not found! DOM may not be loaded."
+    );
+    // 尝试重新获取
+    const retryContainer = document.getElementById("grid-container");
+    if (retryContainer) {
+      console.log("renderBoard: Successfully retried getting gridContainer");
+      // 注意：这里不能直接赋值给 const，但可以继续使用 retryContainer
+      retryContainer.innerHTML = "";
+      retryContainer.appendChild(vfxContainer);
+      // 继续使用 retryContainer 进行渲染
+      _renderBoardCells(retryContainer);
+      return;
+    }
+    return;
+  }
+
   // 防御性检查：确保 board 数组已正确初始化
   if (!board || !Array.isArray(board) || board.length !== GRID_SIZE) {
     console.error("Board not properly initialized, recreating...");
     createBoard();
+    // 如果重新创建后还是有问题，再次检查
+    if (!board || !Array.isArray(board) || board.length !== GRID_SIZE) {
+      console.error("Failed to create board, aborting render");
+      return;
+    }
   }
 
   gridContainer.innerHTML = "";
   gridContainer.appendChild(vfxContainer);
+
+  _renderBoardCells(gridContainer);
+}
+
+function _renderBoardCells(container) {
+  if (!container) {
+    console.error("_renderBoardCells: container is null");
+    return;
+  }
 
   for (let r = 0; r < GRID_SIZE; r++) {
     // 确保每一行都存在
@@ -590,7 +631,7 @@ function renderBoard() {
         cell.classList.add("cell-placeholder");
       }
 
-      gridContainer.appendChild(cell);
+      container.appendChild(cell);
     }
   }
 }
@@ -3679,13 +3720,23 @@ function startLevel(id) {
     messageArea.textContent = parts.join("，");
   }
 
+  // Ensure menu is hidden when starting a level (do this first)
+  hideMenu();
+
   // render UI and board
   updateTargetUI();
   createBoard(lvlDef?.initialBoard);
   renderBoard();
 
-  // Ensure menu is hidden when starting a level
-  hideMenu();
+  // 再次确保菜单被隐藏（防御性，延迟一点确保 DOM 更新完成）
+  setTimeout(() => {
+    hideMenu();
+    // 确保游戏容器可见
+    const gameContainer = document.getElementById("game-container");
+    if (gameContainer) {
+      gameContainer.style.display = "flex";
+    }
+  }, 50);
 }
 
 /*
@@ -3864,9 +3915,13 @@ function renderLevelMenu() {
 function showMenu() {
   const overlay = document.getElementById("menu-overlay");
   const panel = document.getElementById("level-panel");
-  if (!overlay) return;
+  if (!overlay) {
+    console.warn("showMenu: menu-overlay not found");
+    return;
+  }
   overlay.classList.remove("hidden");
   overlay.setAttribute("aria-hidden", "false");
+  overlay.style.display = "flex"; // 确保显示
   if (panel) panel.classList.remove("hidden");
   renderLevelMenu();
 }
@@ -4432,6 +4487,24 @@ function openLevelEditor() {
         );
     }
 
+    // Collect color weights
+    const colorWeights = {};
+    let weightsTotal = 0;
+    COLORS.forEach((color) => {
+      const val = parseFloat(weightInputs[color].value) || 0;
+      colorWeights[color] = val;
+      weightsTotal += val;
+    });
+
+    // Validate weights total (allow small floating point errors)
+    if (Math.abs(weightsTotal - 100) > 0.1) {
+      return alert(
+        `方块权重总和必须为100%，当前为 ${weightsTotal.toFixed(
+          1
+        )}%。请调整权重值。`
+      );
+    }
+
     // Validate and parse specialRules
     let specialRules = {};
     const specialRulesText = specialRulesInput.value.trim();
@@ -4446,6 +4519,9 @@ function openLevelEditor() {
         return alert("specialRules JSON 格式错误：" + e.message);
       }
     }
+
+    // Save colorWeights to specialRules
+    specialRules.colorWeights = colorWeights;
 
     lvl.name = name;
     lvl.unlocked = unlockedInput.checked;
@@ -4717,6 +4793,13 @@ function openLevelEditor() {
     const newTargets = rows.map((r) => r._get());
     tempLevel.targets = newTargets;
 
+    // Collect color weights for preview
+    const colorWeights = {};
+    COLORS.forEach((color) => {
+      const val = parseFloat(weightInputs[color].value) || 0;
+      colorWeights[color] = val;
+    });
+
     // Save specialRules
     let specialRules = {};
     const specialRulesText = specialRulesInput.value.trim();
@@ -4730,6 +4813,7 @@ function openLevelEditor() {
         // Ignore parse errors for preview
       }
     }
+    specialRules.colorWeights = colorWeights;
     tempLevel.specialRules = specialRules;
 
     // Save initial board layout
@@ -4908,6 +4992,98 @@ function openLevelEditor() {
   form.appendChild(document.createTextNode("目标 (targets) :"));
   form.appendChild(targetsContainer);
   form.appendChild(addTargetBtn);
+
+  // Color Weights Editor
+  form.appendChild(document.createElement("hr"));
+  const weightsLabel = document.createElement("div");
+  weightsLabel.style.marginBottom = "8px";
+  weightsLabel.innerHTML =
+    "<strong>方块权重配置 (colorWeights)</strong> <span style='font-size: 0.9em; color: #999;'>(总和必须为100%)</span>";
+
+  const weightsContainer = document.createElement("div");
+  weightsContainer.style.display = "grid";
+  weightsContainer.style.gridTemplateColumns = "repeat(2, 1fr)";
+  weightsContainer.style.gap = "8px";
+  weightsContainer.style.marginBottom = "8px";
+  weightsContainer.style.padding = "12px";
+  weightsContainer.style.backgroundColor = "#1a1a1a";
+  weightsContainer.style.borderRadius = "4px";
+
+  const weightInputs = {};
+  const colorNamesForEditor = {
+    red: "红色 (Red)",
+    blue: "蓝色 (Blue)",
+    green: "绿色 (Green)",
+    purple: "紫色 (Purple)",
+    white: "白色 (White)",
+    orange: "橙色 (Orange)",
+    yellow: "黄色 (Yellow)",
+  };
+
+  COLORS.forEach((color) => {
+    const weightRow = document.createElement("div");
+    weightRow.style.display = "flex";
+    weightRow.style.alignItems = "center";
+    weightRow.style.gap = "8px";
+
+    const label = document.createElement("label");
+    label.textContent = colorNamesForEditor[color] || color;
+    label.style.flex = "1";
+    label.style.minWidth = "120px";
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = 0;
+    input.max = 100;
+    input.step = 1;
+    input.style.width = "80px";
+    input.style.padding = "4px";
+    input.dataset.color = color;
+    weightInputs[color] = input;
+
+    const percentLabel = document.createElement("span");
+    percentLabel.textContent = "%";
+    percentLabel.style.color = "#999";
+
+    weightRow.appendChild(label);
+    weightRow.appendChild(input);
+    weightRow.appendChild(percentLabel);
+    weightsContainer.appendChild(weightRow);
+  });
+
+  const weightsTotal = document.createElement("div");
+  weightsTotal.style.marginTop = "8px";
+  weightsTotal.style.padding = "8px";
+  weightsTotal.style.backgroundColor = "#0a0a0a";
+  weightsTotal.style.borderRadius = "4px";
+  weightsTotal.style.fontWeight = "bold";
+  weightsTotal.innerHTML = '总计: <span id="editor-weights-total">100</span>%';
+
+  // 实时更新总权重
+  function updateWeightsTotal() {
+    const total = COLORS.reduce((sum, color) => {
+      const val = parseFloat(weightInputs[color].value) || 0;
+      return sum + val;
+    }, 0);
+    const totalSpan = document.getElementById("editor-weights-total");
+    if (totalSpan) {
+      totalSpan.textContent = total.toFixed(1);
+      totalSpan.style.color =
+        Math.abs(total - 100) < 0.1 ? "#4caf50" : "#f44336";
+    }
+  }
+
+  // 为所有权重输入框添加事件监听
+  COLORS.forEach((color) => {
+    weightInputs[color].addEventListener("input", updateWeightsTotal);
+    weightInputs[color].addEventListener("change", updateWeightsTotal);
+  });
+
+  const weightsWrap = document.createElement("div");
+  weightsWrap.appendChild(weightsLabel);
+  weightsWrap.appendChild(weightsContainer);
+  weightsWrap.appendChild(weightsTotal);
+  form.appendChild(weightsWrap);
 
   // Special Rules editor
   form.appendChild(document.createElement("hr"));
@@ -5185,6 +5361,13 @@ function openLevelEditor() {
     starInputs.forEach((s) => (s.value = ""));
     thumbPreview.src = "";
     specialRulesInput.value = "";
+    // Reset weights to default
+    COLORS.forEach((color) => {
+      if (weightInputs[color]) {
+        weightInputs[color].value = DEFAULT_COLOR_WEIGHTS[color] || 0;
+      }
+    });
+    updateWeightsTotal();
     boardEditorCells.forEach((cell) => {
       cell.dataset.color = "";
       cell.style.backgroundColor = "#222";
@@ -5224,12 +5407,25 @@ function openLevelEditor() {
     currentDraft.targets = Array.isArray(lvl.targets)
       ? JSON.parse(JSON.stringify(lvl.targets))
       : [];
-    // Load specialRules
+
+    // Load colorWeights
+    const weights = lvl.specialRules?.colorWeights || DEFAULT_COLOR_WEIGHTS;
+    COLORS.forEach((color) => {
+      if (weightInputs[color]) {
+        weightInputs[color].value = weights[color] || 0;
+      }
+    });
+    updateWeightsTotal();
+
+    // Load specialRules (excluding colorWeights to avoid duplication)
     if (lvl.specialRules && typeof lvl.specialRules === "object") {
       try {
-        specialRulesInput.value = JSON.stringify(lvl.specialRules, null, 2);
+        const specialRulesCopy = { ...lvl.specialRules };
+        delete specialRulesCopy.colorWeights; // Remove colorWeights as it's handled separately
+        const rulesStr = JSON.stringify(specialRulesCopy, null, 2);
+        specialRulesInput.value = rulesStr === "{}" ? "" : rulesStr;
       } catch (e) {
-        specialRulesInput.value = "{}";
+        specialRulesInput.value = "";
       }
     } else {
       specialRulesInput.value = "";
@@ -5368,9 +5564,14 @@ function openLevelEditor() {
 
 function hideMenu() {
   const overlay = document.getElementById("menu-overlay");
-  if (!overlay) return;
+  if (!overlay) {
+    console.warn("hideMenu: menu-overlay not found");
+    return;
+  }
   overlay.classList.add("hidden");
   overlay.setAttribute("aria-hidden", "true");
+  // 强制设置 display: none 以确保隐藏
+  overlay.style.display = "none";
 }
 
 document.addEventListener("DOMContentLoaded", () => {

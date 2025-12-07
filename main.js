@@ -57,39 +57,11 @@ class GameController {
    * 开始加载流程
    */
   startLoading() {
-    // 显示加载进度
-    this.updateLoadingProgress(50);
-
-    // 等待关卡加载完成后再显示主菜单
-    const checkLevelsLoaded = () => {
-      if (Array.isArray(window.LEVELS) && window.LEVELS.length > 0) {
-        this.updateLoadingProgress(100);
-        setTimeout(() => {
-          this.showMainMenu();
-        }, 200);
-      } else {
-        // 如果还没加载完成，继续等待
-        setTimeout(checkLevelsLoaded, 100);
-      }
-    };
-
-    checkLevelsLoaded();
-  }
-
-  /**
-   * 更新加载进度
-   */
-  updateLoadingProgress(progress) {
-    GameCore.loadingProgress = progress;
-    const progressBar = document.getElementById("loading-progress-bar");
-    const progressText = document.getElementById("loading-progress-text");
-
-    if (progressBar) {
-      progressBar.style.width = `${progress}%`;
-    }
-    if (progressText) {
-      progressText.textContent = `${progress}%`;
-    }
+    // 这里可以添加加载进度显示逻辑
+    // 暂时直接显示主菜单
+    setTimeout(() => {
+      this.showMainMenu();
+    }, 500);
   }
 
   /**

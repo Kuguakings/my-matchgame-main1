@@ -12,15 +12,7 @@ export class GameCore {
 
   // 游戏板配置
   static GRID_SIZE = 9;
-  static COLORS = [
-    "red",
-    "blue",
-    "green",
-    "purple",
-    "white",
-    "orange",
-    "yellow",
-  ];
+  static COLORS = ["red", "blue", "green", "purple", "white", "orange", "yellow"];
 
   // 游戏状态
   static board = [];
@@ -76,95 +68,19 @@ export class GameCore {
    * 创建新的游戏板
    */
   static createBoard(initialLayout = null) {
+    // 从原代码复制createBoard函数的核心逻辑
+    // 这里先创建占位符，稍后实现
     this.board = [];
     for (let r = 0; r < this.GRID_SIZE; r++) {
       this.board[r] = [];
       for (let c = 0; c < this.GRID_SIZE; c++) {
         if (initialLayout && initialLayout[r] && initialLayout[r][c]) {
-          // 使用提供的初始布局
           this.board[r][c] = { ...initialLayout[r][c] };
         } else {
-          // 生成随机方块
-          const color = this.getWeightedRandomColor();
-          this.board[r][c] = {
-            color: color,
-            id: this.nextTileId++,
-            state: "normal",
-          };
+          this.board[r][c] = null;
         }
       }
     }
-
-    // 确保初始布局没有立即可以消除的匹配
-    if (!initialLayout) {
-      this.ensureNoInitialMatches();
-    }
-  }
-
-  /**
-   * 确保初始布局没有立即可以消除的匹配
-   */
-  static ensureNoInitialMatches() {
-    let attempts = 0;
-    const maxAttempts = 100;
-
-    while (attempts < maxAttempts) {
-      let hasMatches = false;
-
-      // 检查所有可能的匹配
-      for (let r = 0; r < this.GRID_SIZE; r++) {
-        for (let c = 0; c < this.GRID_SIZE; c++) {
-          if (this.checkMatchAt(r, c)) {
-            hasMatches = true;
-            // 重新生成这个位置的方块
-            this.board[r][c] = {
-              color: this.getWeightedRandomColor(),
-              id: this.nextTileId++,
-              state: "normal",
-            };
-          }
-        }
-      }
-
-      if (!hasMatches) {
-        break;
-      }
-      attempts++;
-    }
-
-    if (attempts >= maxAttempts) {
-      console.warn("无法生成无初始匹配的布局");
-    }
-  }
-
-  /**
-   * 检查指定位置是否有匹配
-   */
-  static checkMatchAt(r, c) {
-    const tile = this.board[r]?.[c];
-    if (!tile) return false;
-
-    // 检查水平匹配（向右）
-    let horizontalCount = 1;
-    for (let i = c + 1; i < this.GRID_SIZE; i++) {
-      if (this.board[r][i]?.color === tile.color) {
-        horizontalCount++;
-      } else {
-        break;
-      }
-    }
-
-    // 检查垂直匹配（向下）
-    let verticalCount = 1;
-    for (let i = r + 1; i < this.GRID_SIZE; i++) {
-      if (this.board[i]?.[c]?.color === tile.color) {
-        verticalCount++;
-      } else {
-        break;
-      }
-    }
-
-    return horizontalCount >= 3 || verticalCount >= 3;
   }
 
   /**
@@ -186,10 +102,7 @@ export class GameCore {
    */
   static getWeightedRandomColor() {
     const weights = this.currentLevelWeights;
-    const totalWeight = Object.values(weights).reduce(
-      (sum, weight) => sum + weight,
-      0
-    );
+    const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
     let random = Math.random() * totalWeight;
 
     for (const color of this.COLORS) {

@@ -29,7 +29,10 @@ let levelTargets = {}; // { color: count }
 // 游戏状态保存相关常量（已移至 modules/game-state.js）
 // 使用函数获取常量值，避免重复声明
 function getLevelStateKeyPrefix() {
-  if (window.GameStateManager && window.GameStateManager.LEVEL_STATE_KEY_PREFIX) {
+  if (
+    window.GameStateManager &&
+    window.GameStateManager.LEVEL_STATE_KEY_PREFIX
+  ) {
     return window.GameStateManager.LEVEL_STATE_KEY_PREFIX;
   }
   return "mymatch_level_state_v1_";
@@ -168,9 +171,8 @@ function loadGameData() {
     }
 
     // 确保 loadLevels 总是返回一个 Promise
-    const loadLevelsPromise = typeof loadLevels === "function" 
-      ? loadLevels() 
-      : Promise.resolve();
+    const loadLevelsPromise =
+      typeof loadLevels === "function" ? loadLevels() : Promise.resolve();
 
     loadLevelsPromise
       .then(() => {
@@ -294,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("beforeunload", () => {
     // 在用户离开页面时保存游戏状态
     if (level && board) {
-      saveGameState();
+      saveGameState(level, score, board, levelTargets, targetScore);
     }
   });
 
@@ -916,13 +918,13 @@ function handleCellClick(e) {
 
   // 冰冻方块：不可选择、不可交换
   if (board[r][c] && board[r][c].state === "frozen") {
-    audio.playInvalid();
+    typeof audio !== "undefined" && audio.playInvalid();
     return;
   }
 
   // Fusion Core tiles cannot be moved
   if (board[r][c] && board[r][c].type === "fusion-core") {
-    audio.playInvalid();
+    typeof audio !== "undefined" && audio.playInvalid();
     // Shake visual?
     e.target.classList.add("shake");
     setTimeout(() => e.target.classList.remove("shake"), 200);
@@ -931,13 +933,13 @@ function handleCellClick(e) {
   // Gold tiles CAN be moved anywhere
 
   if (!selectedCell) {
-    audio.playSelect();
+    typeof audio !== "undefined" && audio.playSelect();
     selectCell(r, c);
     return;
   }
 
   if (selectedCell.r === r && selectedCell.c === c) {
-    audio.playSelect();
+    typeof audio !== "undefined" && audio.playSelect();
     deselectCell();
     return;
   }
@@ -952,11 +954,11 @@ function handleCellClick(e) {
   const allowAnySwap = isGold;
 
   if (isAdjacent || allowAnySwap) {
-    audio.playSwap();
+    typeof audio !== "undefined" && audio.playSwap();
     swapCells(selectedCell.r, selectedCell.c, r, c);
   } else {
     // Just select the new cell (deselect old implicitly)
-    audio.playSelect();
+    typeof audio !== "undefined" && audio.playSelect();
     selectCell(r, c);
   }
 }
@@ -1071,7 +1073,7 @@ async function swapCells(r1, c1, r2, c2) {
       await processFusionCores();
     } else {
       // No Match? Revert!
-      audio.playInvalid();
+      typeof audio !== "undefined" && audio.playInvalid();
 
       // Revert Data
       temp = board[r1][c1];
@@ -1351,7 +1353,7 @@ async function processMatches(initialMatches = null, swapFocus = null) {
         if (tile.state === "bright-blue") {
           if (!processedSpecials.has(tile.id)) {
             processedSpecials.add(tile.id);
-            audio.playExplosion("blue");
+            typeof audio !== "undefined" && audio.playExplosion("blue");
 
             // Visual effect for Blue Explosion
             showVFX(r, c, "shockwave"); // Blue tinted shockwave handled by CSS ideally, or just standard for now
@@ -1383,7 +1385,7 @@ async function processMatches(initialMatches = null, swapFocus = null) {
           !processedSpecials.has(tile.id)
         ) {
           processedSpecials.add(tile.id);
-          audio.playExplosion(tile.color);
+          typeof audio !== "undefined" && audio.playExplosion(tile.color);
           let exploded = getExplosionTargets(r, c, tile.type);
           exploded.forEach((t) => {
             const key = `${t.r},${t.c}`;
@@ -1427,7 +1429,7 @@ async function processMatches(initialMatches = null, swapFocus = null) {
             state: "normal",
           };
           board[sc.r][sc.c] = newTile;
-          audio.playCreateSpecial();
+          typeof audio !== "undefined" && audio.playCreateSpecial();
         });
 
         // Spawn Fusion Cores
@@ -1440,7 +1442,7 @@ async function processMatches(initialMatches = null, swapFocus = null) {
             state: "normal",
             durability: 5,
           };
-          audio.playCreateSpecial();
+          typeof audio !== "undefined" && audio.playCreateSpecial();
         }
 
         renderBoard();
@@ -1542,7 +1544,7 @@ function getExplosionTargets(r, c, type) {
 +  - 副作用：修改 board，播放大量 VFX，更新 score。
 */
 async function activateGoldenTile(r, c) {
-  audio.playWhirlwind();
+  typeof audio !== "undefined" && audio.playWhirlwind();
 
   let targets = [];
   let available = [];
@@ -1998,7 +2000,7 @@ async function handleRedMatch3(r, c, removalSet) {
   }
   if (targets.length > 0) {
     const target = targets[Math.floor(Math.random() * targets.length)];
-    audio.playExplosion("red");
+    typeof audio !== "undefined" && audio.playExplosion("red");
     showVFX(target.r, target.c, "shockwave");
     removalSet.add(`${target.r},${target.c}`);
   }
@@ -2030,7 +2032,7 @@ async function handleRedMatch4(removalSet) {
         if (cell) cell.style.transform = "";
       }, 300);
     }
-    audio.playExplosion("red");
+    typeof audio !== "undefined" && audio.playExplosion("red");
     // Effect centered on the activated red tile
     showVFX(red.r, red.c, "shockwave");
 
@@ -3687,10 +3689,10 @@ async function loadLevels() {
       }
 
       console.log("关卡加载成功，关卡数量：", window.LEVELS.length);
-      
+
       // 在加载关卡后应用本地进度覆盖（若有）
       loadProgress();
-      
+
       // 触发事件
       document.dispatchEvent(
         new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
@@ -3698,20 +3700,22 @@ async function loadLevels() {
     } catch (err) {
       console.warn("无法通过 API 加载关卡，使用内置回退关卡。错误：", err);
       // 使用内置回退关卡
-      window.LEVELS = [{
-        id: 1,
-        name: "入门练习",
-        unlocked: true,
-        moves: 25,
-        targets: [{ type: "score", count: 5000 }],
-        theme: "plain",
-        stars: [3000, 6000, 10000],
-        description: "内置回退：第1关",
-      }];
-      
+      window.LEVELS = [
+        {
+          id: 1,
+          name: "入门练习",
+          unlocked: true,
+          moves: 25,
+          targets: [{ type: "score", count: 5000 }],
+          theme: "plain",
+          stars: [3000, 6000, 10000],
+          description: "内置回退：第1关",
+        },
+      ];
+
       // 在加载关卡后应用本地进度覆盖（若有）
       loadProgress();
-      
+
       document.dispatchEvent(
         new CustomEvent("levelsLoaded", { detail: { levels: window.LEVELS } })
       );
@@ -3780,7 +3784,13 @@ function saveSettings() {
 */
 function saveGameState() {
   if (window.GameStateManager && window.GameStateManager.saveGameState) {
-    window.GameStateManager.saveGameState(level, score, board, levelTargets, targetScore);
+    window.GameStateManager.saveGameState(
+      level,
+      score,
+      board,
+      levelTargets,
+      targetScore
+    );
   } else {
     // 回退到本地实现
     try {
@@ -4408,12 +4418,12 @@ function showMenu() {
  * @returns {string} 规范化后的路径
  */
 function normalizeAssetPath(path) {
-  if (!path || typeof path !== 'string') return path;
+  if (!path || typeof path !== "string") return path;
   // 如果是 DataURL，直接返回
-  if (path.startsWith('data:')) return path;
+  if (path.startsWith("data:")) return path;
   // 如果是 assets/ 开头的相对路径，转换为 ../assets/
-  if (path.startsWith('assets/')) {
-    return '../' + path;
+  if (path.startsWith("assets/")) {
+    return "../" + path;
   }
   return path;
 }

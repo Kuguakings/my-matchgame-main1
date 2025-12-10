@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Match-3 Game</title>
-    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="src/css/style.css" />
   </head>
   <body>
     <!-- 加载屏幕 -->
@@ -54,34 +54,97 @@
       <!-- 版本号显示：格式 MM.dd.HH.mm (月.日.小时.分钟) -->
       <div id="version-display">v12.5.23.15</div>
     </div>
-    
+
     <!-- 关卡编辑器 -->
-    <div id="level-editor" class="level-editor" style="display:none;">
+    <div id="level-editor" class="level-editor" style="display: none">
       <h2>关卡编辑器</h2>
       <div class="editor-controls">
         <div class="weight-controls">
           <h3>方块权重配置</h3>
           <div class="weight-inputs">
             <div class="weight-input">
-              <label>红色 (Red): <input type="number" min="0" max="100" value="12" data-color="red" class="color-weight-input"></label>
+              <label
+                >红色 (Red):
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="12"
+                  data-color="red"
+                  class="color-weight-input"
+              /></label>
             </div>
             <div class="weight-input">
-              <label>蓝色 (Blue): <input type="number" min="0" max="100" value="12" data-color="blue" class="color-weight-input"></label>
+              <label
+                >蓝色 (Blue):
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="12"
+                  data-color="blue"
+                  class="color-weight-input"
+              /></label>
             </div>
             <div class="weight-input">
-              <label>绿色 (Green): <input type="number" min="0" max="100" value="12" data-color="green" class="color-weight-input"></label>
+              <label
+                >绿色 (Green):
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="12"
+                  data-color="green"
+                  class="color-weight-input"
+              /></label>
             </div>
             <div class="weight-input">
-              <label>紫色 (Purple): <input type="number" min="0" max="100" value="12" data-color="purple" class="color-weight-input"></label>
+              <label
+                >紫色 (Purple):
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="12"
+                  data-color="purple"
+                  class="color-weight-input"
+              /></label>
             </div>
             <div class="weight-input">
-              <label>白色 (White): <input type="number" min="0" max="100" value="12" data-color="white" class="color-weight-input"></label>
+              <label
+                >白色 (White):
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="12"
+                  data-color="white"
+                  class="color-weight-input"
+              /></label>
             </div>
             <div class="weight-input">
-              <label>橙色 (Orange): <input type="number" min="0" max="100" value="20" data-color="orange" class="color-weight-input"></label>
+              <label
+                >橙色 (Orange):
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="20"
+                  data-color="orange"
+                  class="color-weight-input"
+              /></label>
             </div>
             <div class="weight-input">
-              <label>黄色 (Yellow): <input type="number" min="0" max="100" value="20" data-color="yellow" class="color-weight-input"></label>
+              <label
+                >黄色 (Yellow):
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="20"
+                  data-color="yellow"
+                  class="color-weight-input"
+              /></label>
             </div>
             <div class="weight-total">
               总计: <span id="weights-total">100</span>%
@@ -90,32 +153,41 @@
         </div>
       </div>
     </div>
-    
-    <!-- 菜单覆盖层 -->
+
+    <!-- 菜单覆盖层 - 现代化设计 -->
     <div id="menu-overlay" class="hidden" aria-hidden="true">
-      <div id="main-menu">
-        <h2>关卡选择</h2>
-        <div id="menu-buttons">
-          <button id="btn-levels">关卡列表</button>
-          <button id="btn-close-menu">关闭</button>
-          <!-- 关卡编辑器按钮（在外面） -->
-          <button id="btn-level-editor-panel" class="level-editor-btn">关卡编辑器</button>
+      <div id="menu-backdrop"></div>
+      <div id="main-menu" class="modern-menu">
+        <div class="menu-header">
+          <h1 class="menu-title">关卡选择</h1>
+          <div class="title-decoration"></div>
         </div>
-        <div id="level-panel" class="hidden">
+
+        <div id="level-panel" class="level-panel-container">
           <div id="level-grid" class="level-grid">
             <!-- Level cards will be injected here by JS -->
           </div>
-          <div class="level-footer">
-            <button id="btn-back-to-main">返回</button>
-          </div>
+        </div>
+
+        <div class="menu-actions">
+          <button id="btn-close-menu" class="btn-modern btn-close">
+            <span class="btn-text">关闭</span>
+            <span class="btn-glow"></span>
+          </button>
+          <button id="btn-level-editor-panel" class="btn-modern btn-editor">
+            <span class="btn-text">关卡编辑器</span>
+            <span class="btn-glow"></span>
+          </button>
         </div>
       </div>
     </div>
-    
-    <script src="sound.js"></script>
+
+    <script src="src/js/sound.js"></script>
+    <!-- 高级音频管理系统 -->
+    <script src="src/js/audio/audio-manager.js"></script>
     <!-- 模块化重构：先加载模块，再加载主游戏文件 -->
-    <script src="modules/game-state.js"></script>
-    <script src="modules/level-manager.js"></script>
-    <script src="game.js"></script>
+    <script src="src/js/modules/game-state.js"></script>
+    <script src="src/js/modules/level-manager.js"></script>
+    <script src="src/js/game.js"></script>
   </body>
 </html>

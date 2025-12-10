@@ -1,14 +1,15 @@
 // ==========================================
 // 【版本号管理】版本格式: MM.dd.HH.mm (月.日.小时.分钟)
 // ⚠️ 每次修改代码时，必须更新下方版本号！
-// 当前版本：v12.5.23.15 (2025年12月5日 23:15 修改)
+// 当前版本：v12.10.12.00 (2025年12月10日 12:00 修改)
 // 历史版本：
+//   - v12.10.12.00: 渲染性能优化（缓存网格 DOM、降低编辑器模糊、增加降帧保护）（2025-12-10 12:00）
 //   - v12.5.23.15: 主题系统实现、编辑器优化（2025-12-05 23:15）- 关卡主题应用到界面、编辑器退出按钮、设置优化
 //   - v12.5.23.00: 关卡编辑器全面完善（2025-12-05 23:00）- 添加游戏板布局编辑器、预览功能、撤销/重做、批量操作
 //   - v12.5.22.30: 关卡编辑器完善（2025-12-05 22:30）- 添加 theme/specialRules 编辑、复制、排序、导入验证、UX 优化
 //   - v12.5.22.00: 初版（2025-12-05 22:00）- 特效增强 + 版本号系统添加
 // ==========================================
-const GAME_VERSION = "12.5.23.15";
+const GAME_VERSION = "12.10.12.00";
 
 const GRID_SIZE = 9;
 const COLORS = ["red", "blue", "green", "purple", "white", "orange", "yellow"];
@@ -60,6 +61,9 @@ const levelDisplay = document.getElementById("level");
 const messageArea = document.getElementById("message-area");
 const versionDisplay = document.getElementById("version-display");
 const targetPanel = document.getElementById("target-panel");
+
+// 网格缓存，避免每次重建 DOM 造成卡顿
+let gridCellRefs = [];
 
 // VFX System: 用于放置所有视觉特效元素的容器（将在 DOMContentLoaded 中统一 append）
 const vfxContainer = document.createElement("div");
@@ -759,29 +763,11 @@ function applyFreeze(tile) {
 }
 
 function renderBoard() {
-  // 防御性检查：确保 gridContainer 存在
-  if (!gridContainer) {
+  const container = gridContainer || document.getElementById("grid-container");
+  if (!container) {
     console.error(
       "renderBoard: gridContainer not found! DOM may not be loaded."
     );
-    // 尝试重新获取
-    const retryContainer = document.getElementById("grid-container");
-    if (retryContainer) {
-      console.log("renderBoard: Successfully retried getting gridContainer");
-      // 注意：这里不能直接赋值给 const，但可以继续使用 retryContainer
-      retryContainer.innerHTML = "";
-      retryContainer.appendChild(vfxContainer);
-      // 继续使用 retryContainer 进行渲染
-      _renderBoardCells(retryContainer);
-      // 重新应用选中状态
-      if (selectedCell) {
-        const cell = getCellElement(selectedCell.r, selectedCell.c);
-        if (cell) {
-          cell.classList.add("selected");
-        }
-      }
-      return;
-    }
     return;
   }
 
@@ -796,10 +782,8 @@ function renderBoard() {
     }
   }
 
-  gridContainer.innerHTML = "";
-  gridContainer.appendChild(vfxContainer);
-
-  _renderBoardCells(gridContainer);
+  _ensureGridDom(container);
+  _renderBoardCells(container);
 
   // 重新应用选中状态（如果存在）
   if (selectedCell) {
@@ -810,10 +794,51 @@ function renderBoard() {
   }
 }
 
+function _ensureGridDom(container) {
+  if (!container) return;
+
+  const hasGrid =
+    gridCellRefs.length === GRID_SIZE &&
+    gridCellRefs.every((row) => row.length === GRID_SIZE);
+
+  // 如果节点丢失或未初始化，重建一次
+  if (!hasGrid || !container.contains(gridCellRefs?.[0]?.[0])) {
+    gridCellRefs = [];
+    container.innerHTML = "";
+    container.appendChild(vfxContainer);
+
+    const frag = document.createDocumentFragment();
+
+    for (let r = 0; r < GRID_SIZE; r++) {
+      const row = [];
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        cell.style.gridRowStart = r + 1;
+        cell.style.gridColumnStart = c + 1;
+        cell.addEventListener("click", handleCellClick, { passive: true });
+        frag.appendChild(cell);
+        row.push(cell);
+      }
+      gridCellRefs.push(row);
+    }
+
+    container.appendChild(frag);
+  } else if (vfxContainer.parentElement !== container) {
+    container.prepend(vfxContainer);
+  }
+}
+
 function _renderBoardCells(container) {
   if (!container) {
     console.error("_renderBoardCells: container is null");
     return;
+  }
+
+  if (!gridCellRefs.length) {
+    _ensureGridDom(container);
   }
 
   for (let r = 0; r < GRID_SIZE; r++) {
@@ -823,47 +848,58 @@ function _renderBoardCells(container) {
         `Board row ${r} not properly initialized, recreating board...`
       );
       createBoard();
-      // 重新创建后继续渲染（board 已重新创建）
     }
 
     for (let c = 0; c < GRID_SIZE; c++) {
       const tile = board[r] && board[r][c] ? board[r][c] : null;
+      const cell = gridCellRefs[r]?.[c];
+      if (!cell) continue;
 
-      const cell = document.createElement("div");
+      // 清理动态类，避免累积
+      const toRemove = [];
+      cell.classList.forEach((cls) => {
+        if (cls === "cell" || cls === "selected" || cls === "cell-entering") {
+          return;
+        }
+        if (
+          cls.startsWith("color-") ||
+          cls.startsWith("type-") ||
+          cls.startsWith("state-") ||
+          cls.startsWith("voltage-") ||
+          cls === "cell-placeholder"
+        ) {
+          toRemove.push(cls);
+        }
+      });
+      if (toRemove.length) {
+        cell.classList.remove(...toRemove);
+      }
+
       cell.style.gridRowStart = r + 1;
       cell.style.gridColumnStart = c + 1;
+      cell.dataset.row = r;
+      cell.dataset.col = c;
 
       if (tile) {
-        cell.classList.add("cell", `color-${tile.color}`);
+        if (cell.classList.contains("cell-placeholder")) {
+          cell.classList.remove("cell-placeholder");
+        }
+        cell.dataset.id = tile.id;
+        cell.classList.add(`color-${tile.color}`);
 
-        // Add type class
-        if (tile.type !== "normal") {
+        if (tile.type && tile.type !== "normal") {
           cell.classList.add(`type-${tile.type}`);
         }
-        // Add state class
         if (tile.state && tile.state !== "normal") {
           cell.classList.add(`state-${tile.state}`);
         }
-
-        cell.dataset.row = r;
-        cell.dataset.col = c;
-        cell.dataset.id = tile.id;
-
         if (tile.color === "yellow" && tile.voltage) {
           cell.classList.add(`voltage-${tile.voltage}`);
         }
-
-        // 注意：选中状态由selectCell/deselectCell函数管理，这里不添加selected类
-        // 避免每次renderBoard都重新添加事件监听器
-        cell.addEventListener("click", handleCellClick);
       } else {
-        // Placeholder for empty space
+        cell.removeAttribute("data-id");
         cell.classList.add("cell-placeholder");
       }
-
-      // 注意：cell-entering 类只在 animateLevelEntrance() 中添加，不在这里添加
-      // 避免每次renderBoard都触发旋转动画
-      container.appendChild(cell);
     }
   }
 }
@@ -1113,6 +1149,7 @@ async function swapCells(r1, c1, r2, c2) {
   - 返回：对应的 `.cell[data-row][data-col]` 或 null。
 */
 function getCellElement(r, c) {
+  if (gridCellRefs?.[r]?.[c]) return gridCellRefs[r][c];
   return document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
 }
 

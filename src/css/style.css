@@ -25,6 +25,17 @@ body {
   position: relative;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* 加载屏幕 */
 #loading-screen {
   position: fixed;
@@ -616,6 +627,9 @@ body {
   cursor: pointer;
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
   z-index: 10;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
   -webkit-transition: -webkit-transform 0.25s ease-in-out;
   transition: -webkit-transform 0.25s ease-in-out;
   -o-transition: transform 0.25s ease-in-out;
@@ -1329,7 +1343,7 @@ body {
     rgba(22, 33, 62, 0.95) 50%,
     rgba(15, 52, 96, 0.95) 100%
   );
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -4110,9 +4110,15 @@ function startLevel(id) {
   const theme = lvlDef?.theme || "plain";
   applyLevelTheme(theme);
 
-  // 播放主题背景音乐（使用try-catch防止音效错误影响游戏）
+  // 播放主题背景音乐（支持自定义音乐优先）
   try {
-    if (typeof audio !== "undefined" && audio.playThemeBGM) {
+    // 优先使用新的 AudioManager（支持自定义音乐路径）
+    if (typeof audioManager !== "undefined" && audioManager.playLevelMusic) {
+      const customMusicPath = lvlDef?.customMusicPath || null;
+      audioManager.playLevelMusic(theme, customMusicPath);
+    }
+    // 回退到旧的音频系统
+    else if (typeof audio !== "undefined" && audio.playThemeBGM) {
       audio.playThemeBGM(theme);
     }
   } catch (e) {
@@ -4608,6 +4614,31 @@ function openLevelEditor() {
     return;
   }
 
+  // 显示加载提示（优化用户体验）
+  const loadingHint = document.createElement("div");
+  loadingHint.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px 40px;
+    border-radius: 10px;
+    z-index: 10000;
+    font-size: 16px;
+  `;
+  loadingHint.textContent = "正在加载关卡编辑器...";
+  document.body.appendChild(loadingHint);
+
+  // 使用 setTimeout 让加载提示先显示，然后再执行重操作
+  setTimeout(() => {
+    _openLevelEditorCore();
+    document.body.removeChild(loadingHint);
+  }, 50);
+}
+
+function _openLevelEditorCore() {
   const overlay = document.createElement("div");
   overlay.id = "level-editor-overlay";
   overlay.className = "editor-overlay";
@@ -5214,6 +5245,15 @@ function openLevelEditor() {
     lvl.targets = newTargets;
     lvl.specialRules = specialRules;
 
+    // 保存自定义音乐路径
+    const customMusic = customMusicInput.value.trim();
+    if (customMusic) {
+      lvl.customMusicPath = customMusic;
+    } else {
+      // 如果清空了，则删除该字段
+      delete lvl.customMusicPath;
+    }
+
     // Save initial board layout
     const initialBoard = [];
     let hasAnyTile = false;
@@ -5504,6 +5544,14 @@ function openLevelEditor() {
     specialRules.colorWeights = colorWeights;
     tempLevel.specialRules = specialRules;
 
+    // 保存自定义音乐路径（用于预览）
+    const customMusic = customMusicInput.value.trim();
+    if (customMusic) {
+      tempLevel.customMusicPath = customMusic;
+    } else {
+      delete tempLevel.customMusicPath;
+    }
+
     // Save initial board layout
     const initialBoard = [];
     let hasAnyTile = false;
@@ -5657,6 +5705,25 @@ function openLevelEditor() {
   const themeWrap = labeled("主题 (theme)", themeInput);
   themeWrap.appendChild(themeHelp);
   form.appendChild(themeWrap);
+
+  // 自定义背景音乐路径
+  const customMusicInput = document.createElement("input");
+  customMusicInput.type = "text";
+  customMusicInput.placeholder = "例如: music/custom/level1.mp3";
+  const customMusicHelp = document.createElement("div");
+  customMusicHelp.style.fontSize = "0.85em";
+  customMusicHelp.style.color = "#999";
+  customMusicHelp.style.marginTop = "2px";
+  customMusicHelp.innerHTML =
+    "🎵 自定义音乐路径（可选）<br>" +
+    "留空则使用主题默认音乐。支持格式：MP3, WAV, OGG<br>" +
+    "路径示例：music/custom/forest-extended.mp3";
+  const customMusicWrap = labeled(
+    "自定义音乐 (customMusicPath)",
+    customMusicInput
+  );
+  customMusicWrap.appendChild(customMusicHelp);
+  form.appendChild(customMusicWrap);
 
   const movesHelp = document.createElement("div");
   movesHelp.style.fontSize = "0.85em";
@@ -6134,6 +6201,7 @@ function openLevelEditor() {
       (lvl.targets && lvl.targets.find((t) => t.type === "score")?.count) ||
       0;
     descInput.value = lvl.description || "";
+    customMusicInput.value = lvl.customMusicPath || "";
     const sarr = Array.isArray(lvl.stars) ? lvl.stars : [];
     for (let i = 0; i < 3; i++) starInputs[i].value = sarr[i] || 0;
     const normalizedThumbnail = normalizeAssetPath(lvl.thumbnail || "");
@@ -6207,33 +6275,35 @@ function openLevelEditor() {
   }
 
   function renderLevelList() {
+    // 使用 DocumentFragment 提升性能
+    const fragment = document.createDocumentFragment();
     list.innerHTML = "";
 
     // Batch mode toggle
-    if (!list.querySelector(".batch-mode-toggle")) {
-      const batchToggle = document.createElement("div");
-      batchToggle.className = "batch-mode-toggle";
-      batchToggle.style.marginBottom = "8px";
-      batchToggle.style.padding = "4px";
-      const batchCheckbox = document.createElement("input");
-      batchCheckbox.type = "checkbox";
-      batchCheckbox.id = "batch-mode-checkbox";
-      batchCheckbox.addEventListener("change", (e) => {
-        batchMode = e.target.checked;
-        selectedIndices.clear();
-        renderLevelList();
-        updateBatchControls();
-      });
-      const batchLabel = document.createElement("label");
-      batchLabel.htmlFor = "batch-mode-checkbox";
-      batchLabel.textContent = "批量选择模式";
-      batchLabel.style.cursor = "pointer";
-      batchLabel.style.marginLeft = "4px";
-      batchToggle.appendChild(batchCheckbox);
-      batchToggle.appendChild(batchLabel);
-      list.appendChild(batchToggle);
-    }
+    const batchToggle = document.createElement("div");
+    batchToggle.className = "batch-mode-toggle";
+    batchToggle.style.marginBottom = "8px";
+    batchToggle.style.padding = "4px";
+    const batchCheckbox = document.createElement("input");
+    batchCheckbox.type = "checkbox";
+    batchCheckbox.id = "batch-mode-checkbox";
+    batchCheckbox.checked = batchMode;
+    batchCheckbox.addEventListener("change", (e) => {
+      batchMode = e.target.checked;
+      selectedIndices.clear();
+      renderLevelList();
+      updateBatchControls();
+    });
+    const batchLabel = document.createElement("label");
+    batchLabel.htmlFor = "batch-mode-checkbox";
+    batchLabel.textContent = "批量选择模式";
+    batchLabel.style.cursor = "pointer";
+    batchLabel.style.marginLeft = "4px";
+    batchToggle.appendChild(batchCheckbox);
+    batchToggle.appendChild(batchLabel);
+    fragment.appendChild(batchToggle);
 
+    // 批量创建元素到 fragment，减少 DOM 操作
     (window.LEVELS || []).forEach((l, i) => {
       const it = document.createElement("div");
       it.className = "editor-list-item";
@@ -6278,8 +6348,11 @@ function openLevelEditor() {
         it.classList.add("selected");
       }
 
-      list.appendChild(it);
+      fragment.appendChild(it);
     });
+
+    // 一次性追加所有元素到 DOM，提升性能
+    list.appendChild(fragment);
   }
 
   // Show/hide batch controls based on mode

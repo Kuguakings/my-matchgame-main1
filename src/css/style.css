@@ -1364,13 +1364,15 @@ body {
   color: #fff;
   padding: clamp(1rem, 3vw, 1.5rem);
   border-radius: clamp(12px, 2vw, 16px);
-  width: 100%;
-  max-width: min(95vw, 1200px);
+  width: clamp(320px, 96vw, 1100px);
   max-height: 95vh;
   display: grid;
   grid-template-columns: min(280px, 100%) 1fr;
   gap: clamp(12px, 2vw, 20px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
+  contain: layout paint;
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
@@ -1650,16 +1652,16 @@ body {
 /* 编辑器右上角关闭按钮 */
 .editor-close-top {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
+  top: clamp(8px, 2vw, 14px);
+  right: clamp(8px, 2vw, 14px);
+  width: clamp(32px, 6vw, 42px);
+  height: clamp(32px, 6vw, 42px);
   border-radius: 50%;
   background: rgba(244, 67, 54, 0.8);
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.3);
   cursor: pointer;
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1700,11 +1702,11 @@ body {
   }
 
   .editor-close-top {
-    top: 0.5rem;
-    right: 0.5rem;
-    width: 2rem;
-    height: 2rem;
-    font-size: 1.2rem;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
   }
 }
 
